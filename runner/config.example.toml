@@ -1,0 +1,40 @@
+# Copy to runner/config.toml (ignored by git) and adjust.
+# Connection details and secrets can instead come from the environment:
+#   AGENTS_SUPABASE_URL, AGENTS_SUPABASE_PUBLISHABLE_KEY, AGENTS_EMAIL, AGENTS_PASSWORD, AGENTS_WORKSPACE_DIR
+# The Supabase URL and key also fall back to VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.
+
+# Account the runner signs in with. Use a dedicated account and share the workspace with it
+# as an Agents editor, so the runner only sees the tasks meant for it.
+email = "runner@example.com"
+password = ""
+
+# Folder OpenCode works in. It can hold several repositories.
+workspace_dir = "~/agents-workspace"
+
+# Name shown in the app next to the runner status. Defaults to the computer name.
+# name = "studio-mac"
+
+# Only take tasks from this workspace id. Leave unset to take them from every workspace
+# the account can edit.
+# workspace_id = ""
+
+# Model, as OpenCode's provider/model, and its context and answer size in tokens.
+model = "ollama/qwen3-coder:30b"
+context = 32768
+output = 8192
+
+# Limits for one run of one task. The agent is stopped when either is reached and the task fails.
+max_tokens = 150000
+max_minutes = 30
+
+# How often to check for new tasks when there is nothing to do.
+poll_minutes = 5
+
+# Ask the read-only plan agent for a plan first, then carry it out in the same session.
+plan_first = true
+
+# Approve every permission OpenCode would ask about. Only for a disposable workspace.
+auto_approve = false
+
+# OpenCode command, if it is not on PATH.
+# opencode = "/opt/homebrew/bin/opencode"
