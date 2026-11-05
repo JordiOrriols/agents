@@ -87,7 +87,8 @@ Make sure Ollama serves the model with at least the same context, for example
 
 ### Keep it running on macOS
 
-Save as `~/Library/LaunchAgents/cat.jordiorriols.agents-runner.plist`, adjusting the paths,
+Save as `~/Library/LaunchAgents/cat.jordiorriols.agents-runner.plist`, adjusting the paths
+(macOS's `/usr/bin/python3` is 3.9, so point it at a Python 3.11+ such as Homebrew's),
 then `launchctl load ~/Library/LaunchAgents/cat.jordiorriols.agents-runner.plist`:
 
 ```xml
@@ -98,7 +99,7 @@ then `launchctl load ~/Library/LaunchAgents/cat.jordiorriols.agents-runner.plist
     <key>Label</key><string>cat.jordiorriols.agents-runner</string>
     <key>ProgramArguments</key>
     <array>
-      <string>/usr/bin/python3</string>
+      <string>/opt/homebrew/bin/python3</string>
       <string>/Users/you/GitHub/agents/runner/agents_runner.py</string>
     </array>
     <key>EnvironmentVariables</key>
