@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "Agents",
+    "subtitle": "Aufgaben für deinen lokalen Agenten",
+    "pages": "Agents-Seiten",
+    "tasks": "Aufgaben",
+    "switchProject": "Projekt wechseln",
+    "language": "Sprache",
+    "errors": {
+      "title": "Etwas ist schiefgelaufen"
+    },
+    "actions": {
+      "tryAgain": "Erneut versuchen"
+    },
+    "loading": "Agents wird geladen"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signUp": "Konto erstellen",
+    "signOut": "Abmelden",
+    "signInTitle": "Anmelden",
+    "signUpTitle": "Konto erstellen",
+    "description": "Nutze dasselbe Konto wie in Planner und Ladders, um die Workspaces deines Teams zu sehen.",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "continueWithGitHub": "Mit GitHub fortfahren",
+    "forgotPassword": "Passwort vergessen?",
+    "forgotPasswordTitle": "Passwort zurücksetzen",
+    "forgotPasswordDescription": "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen sicheren Link zum Zurücksetzen.",
+    "sendResetEmail": "E-Mail zum Zurücksetzen senden",
+    "passwordResetSent": "Prüfen Sie Ihre E-Mail auf Anweisungen zum Zurücksetzen des Passworts.",
+    "backToSignIn": "Zurück zur Anmeldung",
+    "resetPasswordTitle": "Neues Passwort festlegen",
+    "resetPasswordDescription": "Wählen Sie ein neues Passwort mit mindestens 8 Zeichen.",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "updatePassword": "Passwort aktualisieren",
+    "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+    "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
+    "checkEmail": "Prüfen Sie Ihre E-Mail, um Ihr Konto zu bestätigen.",
+    "switchToSignUp": "Noch kein Konto? Erstellen Sie eines",
+    "switchToSignIn": "Sie haben bereits ein Konto? Anmelden",
+    "notConfigured": "Die Anmeldung ist für diesen Build nicht konfiguriert.",
+    "cancel": "Abbrechen",
+    "linkFailed": "Dieser Link hat nicht funktioniert: {{message}}. Fordere über „Anmelden“ einen neuen an."
+  },
+  "workspace": {
+    "empty": {
+      "title": "Noch kein Arbeitsbereich",
+      "description": "Erstelle einen Arbeitsbereich über das Menü neben den Tabs oder bitte den Eigentümer, ihn in Agents mit dir zu teilen."
+    }
+  },
+  "welcome": {
+    "title": "Gib Aufgaben an deinen lokalen Agenten ab.",
+    "description": "Schreib auf, was zu tun ist. Ein Agent auf deinem Computer plant jede Aufgabe, erledigt sie und berichtet das Ergebnis.",
+    "queue": "Eine einfache Liste von oben nach unten",
+    "usage": "Zeit und Tokens für jede Aufgabe",
+    "chat": "Nachfragen zum Ergebnis im Chat",
+    "authUnavailable": "Konfiguriere VITE_SUPABASE_URL und VITE_SUPABASE_PUBLISHABLE_KEY, um dich anzumelden. Agents speichert keine Daten lokal."
+  },
+  "tasks": {
+    "loading": "Aufgaben werden geladen",
+    "composer": {
+      "label": "Neue Aufgabe",
+      "title": "Was soll der Agent tun?",
+      "instructions": "Anweisungen, Kontext und woran man erkennt, dass es fertig ist",
+      "hint": "Der Agent übernimmt sie bei der nächsten Prüfung. Strg+Enter fügt sie hinzu.",
+      "add": "Aufgabe hinzufügen"
+    },
+    "sections": {
+      "queue": "Als Nächstes",
+      "done": "Erledigt"
+    },
+    "empty": {
+      "title": "Noch keine Aufgaben",
+      "description": "Füge oben die erste Aufgabe hinzu. Der lokale Runner erledigt sie nacheinander.",
+      "viewer": "Hier erscheinen die Aufgaben der Bearbeiter dieses Arbeitsbereichs."
+    },
+    "status": {
+      "pending": "Ausstehend",
+      "running": "Läuft",
+      "completed": "Erledigt",
+      "failed": "Fehlgeschlagen"
+    },
+    "meta": {
+      "queued": "In der Warteschlange",
+      "running": "Gestartet {{time}}",
+      "finished": "{{duration}} · {{tokens}} Tokens"
+    },
+    "detail": {
+      "description_one": "{{status}} · {{count}} Lauf",
+      "description_other": "{{status}} · {{count}} Läufe",
+      "close": "Schließen",
+      "runner": "Läuft auf {{name}}",
+      "timeSpent": "Benötigte Zeit",
+      "tokensGenerated": "Erzeugte Tokens",
+      "tokensTotal": "Tokens gesamt",
+      "model": "Modell",
+      "instructions": "Anweisungen",
+      "plan": "Plan",
+      "outcome": "Ergebnis",
+      "chat": "Chat",
+      "chatPlaceholder": "Stell eine Rückfrage oder bitte um eine Änderung",
+      "chatHint": "Der Agent antwortet bei der nächsten Prüfung in derselben Sitzung.",
+      "chatBusy": "Du kannst schreiben, sobald der Agent fertig ist.",
+      "send": "Senden",
+      "roles": {
+        "user": "Du:",
+        "agent": "Agent:"
+      },
+      "rerun": "Erneut ausführen",
+      "delete": "Löschen",
+      "cancel": "Abbrechen",
+      "deleteTitle": "Diese Aufgabe löschen?",
+      "deleteDescription": "„{{title}}“, das Ergebnis und der Chat werden entfernt."
+    }
+  },
+  "runner": {
+    "none": "Noch kein Runner. Starte ihn auf deinem Computer, um die Liste abzuarbeiten.",
+    "online": "Runner {{name}} online · geprüft {{time}}",
+    "offline": "Runner {{name}} offline · zuletzt gesehen {{time}}"
+  },
+  "errors": {
+    "unexpectedResponse": "Der Server hat eine unerwartete Antwort gesendet. Lade neu und versuche es noch einmal."
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "Agents",
+    "subtitle": "Tasks for your local agent",
+    "pages": "Agents pages",
+    "tasks": "Tasks",
+    "switchProject": "Switch project",
+    "language": "Language",
+    "errors": {
+      "title": "Something went wrong"
+    },
+    "actions": {
+      "tryAgain": "Try again"
+    },
+    "loading": "Loading Agents"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "signOut": "Sign out",
+    "signInTitle": "Sign in",
+    "signUpTitle": "Create an account",
+    "description": "Use the same account as Planner and Ladders to see your team's workspaces.",
+    "email": "Email",
+    "password": "Password",
+    "continueWithGitHub": "Continue with GitHub",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Reset your password",
+    "forgotPasswordDescription": "Enter your email address and we'll send you a secure reset link.",
+    "sendResetEmail": "Send reset email",
+    "passwordResetSent": "Check your email for password reset instructions.",
+    "backToSignIn": "Back to sign in",
+    "resetPasswordTitle": "Set a new password",
+    "resetPasswordDescription": "Choose a new password with at least 8 characters.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "updatePassword": "Update password",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordsDoNotMatch": "Passwords do not match.",
+    "checkEmail": "Check your email to confirm your account.",
+    "switchToSignUp": "No account? Create one",
+    "switchToSignIn": "Already have an account? Sign in",
+    "notConfigured": "Sign-in is not configured for this build.",
+    "cancel": "Cancel",
+    "linkFailed": "This link did not work: {{message}}. Ask for a new one from Sign in."
+  },
+  "workspace": {
+    "empty": {
+      "title": "No workspace yet",
+      "description": "Create a workspace from the workspace menu next to the tabs, or ask its owner to share one with you in Agents."
+    }
+  },
+  "welcome": {
+    "title": "Hand tasks to your local agent.",
+    "description": "Write down what needs doing. An agent on your computer plans each task, does it, and reports back with the outcome.",
+    "queue": "A simple list worked top to bottom",
+    "usage": "Time and tokens for every task",
+    "chat": "Follow-up chat on the result",
+    "authUnavailable": "Configure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to sign in. Agents does not save data locally."
+  },
+  "tasks": {
+    "loading": "Loading tasks",
+    "composer": {
+      "label": "New task",
+      "title": "What should the agent do?",
+      "instructions": "Instructions, context and how to know it is finished",
+      "hint": "The agent picks it up on its next check. Ctrl+Enter adds it.",
+      "add": "Add task"
+    },
+    "sections": {
+      "queue": "Up next",
+      "done": "Done"
+    },
+    "empty": {
+      "title": "No tasks yet",
+      "description": "Add the first task above. The local runner works through them one at a time.",
+      "viewer": "Tasks added by the workspace editors appear here."
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "meta": {
+      "queued": "Queued",
+      "running": "Started {{time}}",
+      "finished": "{{duration}} · {{tokens}} tokens"
+    },
+    "detail": {
+      "description_one": "{{status}} · {{count}} run",
+      "description_other": "{{status}} · {{count}} runs",
+      "close": "Close",
+      "runner": "Running on {{name}}",
+      "timeSpent": "Time spent",
+      "tokensGenerated": "Tokens generated",
+      "tokensTotal": "Total tokens",
+      "model": "Model",
+      "instructions": "Instructions",
+      "plan": "Plan",
+      "outcome": "Outcome",
+      "chat": "Chat",
+      "chatPlaceholder": "Ask a follow-up question or request a change",
+      "chatHint": "The agent replies in the same session on its next check.",
+      "chatBusy": "You can write once the agent finishes.",
+      "send": "Send",
+      "roles": {
+        "user": "You:",
+        "agent": "Agent:"
+      },
+      "rerun": "Run again",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteTitle": "Delete this task?",
+      "deleteDescription": "“{{title}}”, its outcome and chat will be removed."
+    }
+  },
+  "runner": {
+    "none": "No runner yet. Start the runner on your computer to work through the list.",
+    "online": "Runner {{name}} online · checked {{time}}",
+    "offline": "Runner {{name}} offline · last seen {{time}}"
+  },
+  "errors": {
+    "unexpectedResponse": "The server sent an unexpected response. Reload and try again."
+  }
+}

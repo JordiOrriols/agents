@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "Agents",
+    "subtitle": "Des tâches pour votre agent local",
+    "pages": "Pages d'Agents",
+    "tasks": "Tâches",
+    "switchProject": "Changer de projet",
+    "language": "Langue",
+    "errors": {
+      "title": "Un problème est survenu"
+    },
+    "actions": {
+      "tryAgain": "Réessayer"
+    },
+    "loading": "Chargement d'Agents"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "Créer un compte",
+    "signOut": "Se déconnecter",
+    "signInTitle": "Se connecter",
+    "signUpTitle": "Créer un compte",
+    "description": "Utilisez le même compte que dans Planner et Ladders pour voir les espaces de travail de votre équipe.",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "continueWithGitHub": "Continuer avec GitHub",
+    "forgotPassword": "Mot de passe oublié ?",
+    "forgotPasswordTitle": "Réinitialiser votre mot de passe",
+    "forgotPasswordDescription": "Saisissez votre adresse e-mail et nous vous enverrons un lien de réinitialisation sécurisé.",
+    "sendResetEmail": "Envoyer l’e-mail de réinitialisation",
+    "passwordResetSent": "Consultez votre e-mail pour les instructions de réinitialisation du mot de passe.",
+    "backToSignIn": "Retour à la connexion",
+    "resetPasswordTitle": "Définir un nouveau mot de passe",
+    "resetPasswordDescription": "Choisissez un nouveau mot de passe d’au moins 8 caractères.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères.",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas.",
+    "checkEmail": "Consultez votre e-mail pour confirmer votre compte.",
+    "switchToSignUp": "Pas de compte ? Créez-en un",
+    "switchToSignIn": "Vous avez déjà un compte ? Connectez-vous",
+    "notConfigured": "La connexion n'est pas configurée pour cette version.",
+    "cancel": "Annuler",
+    "linkFailed": "Ce lien n'a pas fonctionné : {{message}}. Demandez-en un nouveau depuis Se connecter."
+  },
+  "workspace": {
+    "empty": {
+      "title": "Aucun espace de travail",
+      "description": "Créez un espace de travail depuis le menu à côté des onglets, ou demandez à son propriétaire de le partager avec vous dans Agents."
+    }
+  },
+  "welcome": {
+    "title": "Confiez des tâches à votre agent local.",
+    "description": "Notez ce qu'il faut faire. Un agent sur votre ordinateur planifie chaque tâche, la réalise et vous rend compte du résultat.",
+    "queue": "Une simple liste traitée de haut en bas",
+    "usage": "Temps et tokens pour chaque tâche",
+    "chat": "Discussion de suivi sur le résultat",
+    "authUnavailable": "Configurez VITE_SUPABASE_URL et VITE_SUPABASE_PUBLISHABLE_KEY pour vous connecter. Agents n'enregistre pas de données localement."
+  },
+  "tasks": {
+    "loading": "Chargement des tâches",
+    "composer": {
+      "label": "Nouvelle tâche",
+      "title": "Que doit faire l'agent ?",
+      "instructions": "Instructions, contexte et comment savoir que c'est terminé",
+      "hint": "L'agent la prend lors de sa prochaine vérification. Ctrl+Entrée l'ajoute.",
+      "add": "Ajouter la tâche"
+    },
+    "sections": {
+      "queue": "À suivre",
+      "done": "Terminées"
+    },
+    "empty": {
+      "title": "Aucune tâche",
+      "description": "Ajoutez la première tâche ci-dessus. Le runner local les traite une par une.",
+      "viewer": "Les tâches ajoutées par les éditeurs de l'espace apparaissent ici."
+    },
+    "status": {
+      "pending": "En attente",
+      "running": "En cours",
+      "completed": "Terminée",
+      "failed": "Échouée"
+    },
+    "meta": {
+      "queued": "En file",
+      "running": "Commencée {{time}}",
+      "finished": "{{duration}} · {{tokens}} tokens"
+    },
+    "detail": {
+      "description_one": "{{status}} · {{count}} exécution",
+      "description_other": "{{status}} · {{count}} exécutions",
+      "close": "Fermer",
+      "runner": "En cours sur {{name}}",
+      "timeSpent": "Temps passé",
+      "tokensGenerated": "Tokens générés",
+      "tokensTotal": "Tokens au total",
+      "model": "Modèle",
+      "instructions": "Instructions",
+      "plan": "Plan",
+      "outcome": "Résultat",
+      "chat": "Discussion",
+      "chatPlaceholder": "Posez une question ou demandez une modification",
+      "chatHint": "L'agent répond dans la même session lors de sa prochaine vérification.",
+      "chatBusy": "Vous pourrez écrire quand l'agent aura terminé.",
+      "send": "Envoyer",
+      "roles": {
+        "user": "Vous :",
+        "agent": "Agent :"
+      },
+      "rerun": "Relancer",
+      "delete": "Supprimer",
+      "cancel": "Annuler",
+      "deleteTitle": "Supprimer cette tâche ?",
+      "deleteDescription": "« {{title}} », son résultat et sa discussion seront supprimés."
+    }
+  },
+  "runner": {
+    "none": "Aucun runner. Lancez-le sur votre ordinateur pour traiter la liste.",
+    "online": "Runner {{name}} en ligne · vérifié {{time}}",
+    "offline": "Runner {{name}} hors ligne · vu {{time}}"
+  },
+  "errors": {
+    "unexpectedResponse": "Le serveur a renvoyé une réponse inattendue. Rechargez et réessayez."
+  }
+}

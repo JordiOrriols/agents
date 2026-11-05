@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "Agents",
+    "subtitle": "Attività per il tuo agente locale",
+    "pages": "Pagine di Agents",
+    "tasks": "Attività",
+    "switchProject": "Cambia progetto",
+    "language": "Lingua",
+    "errors": {
+      "title": "Qualcosa è andato storto"
+    },
+    "actions": {
+      "tryAgain": "Riprova"
+    },
+    "loading": "Caricamento di Agents"
+  },
+  "auth": {
+    "signIn": "Accedi",
+    "signUp": "Crea account",
+    "signOut": "Esci",
+    "signInTitle": "Accedi",
+    "signUpTitle": "Crea un account",
+    "description": "Usa lo stesso account di Planner e Ladders per vedere gli spazi di lavoro del tuo team.",
+    "email": "Email",
+    "password": "Password",
+    "continueWithGitHub": "Continua con GitHub",
+    "forgotPassword": "Password dimenticata?",
+    "forgotPasswordTitle": "Reimposta la password",
+    "forgotPasswordDescription": "Inserisci il tuo indirizzo email e ti invieremo un link sicuro per reimpostarla.",
+    "sendResetEmail": "Invia email di reset",
+    "passwordResetSent": "Controlla la tua email per le istruzioni di reset della password.",
+    "backToSignIn": "Torna all'accesso",
+    "resetPasswordTitle": "Imposta una nuova password",
+    "resetPasswordDescription": "Scegli una nuova password di almeno 8 caratteri.",
+    "newPassword": "Nuova password",
+    "confirmPassword": "Conferma password",
+    "updatePassword": "Aggiorna password",
+    "passwordTooShort": "La password deve contenere almeno 8 caratteri.",
+    "passwordsDoNotMatch": "Le password non corrispondono.",
+    "checkEmail": "Controlla la tua email per confermare l'account.",
+    "switchToSignUp": "Non hai un account? Creane uno",
+    "switchToSignIn": "Hai già un account? Accedi",
+    "notConfigured": "L'accesso non è configurato per questa versione.",
+    "cancel": "Annulla",
+    "linkFailed": "Questo link non ha funzionato: {{message}}. Richiedine uno nuovo da Accedi."
+  },
+  "workspace": {
+    "empty": {
+      "title": "Ancora nessuno spazio di lavoro",
+      "description": "Crea uno spazio di lavoro dal menu accanto alle schede, oppure chiedi al proprietario di condividerlo con te in Agents."
+    }
+  },
+  "welcome": {
+    "title": "Affida attività al tuo agente locale.",
+    "description": "Scrivi cosa c'è da fare. Un agente sul tuo computer pianifica ogni attività, la svolge e ti riporta il risultato.",
+    "queue": "Un semplice elenco dall'alto in basso",
+    "usage": "Tempo e token per ogni attività",
+    "chat": "Chat di approfondimento sul risultato",
+    "authUnavailable": "Configura VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY per accedere. Agents non salva dati in locale."
+  },
+  "tasks": {
+    "loading": "Caricamento delle attività",
+    "composer": {
+      "label": "Nuova attività",
+      "title": "Cosa deve fare l'agente?",
+      "instructions": "Istruzioni, contesto e come capire che è finita",
+      "hint": "L'agente la prende al prossimo controllo. Ctrl+Invio la aggiunge.",
+      "add": "Aggiungi attività"
+    },
+    "sections": {
+      "queue": "Prossime",
+      "done": "Fatte"
+    },
+    "empty": {
+      "title": "Ancora nessuna attività",
+      "description": "Aggiungi la prima attività qui sopra. Il runner locale le svolge una alla volta.",
+      "viewer": "Qui compaiono le attività aggiunte dagli editor dello spazio."
+    },
+    "status": {
+      "pending": "In attesa",
+      "running": "In corso",
+      "completed": "Completata",
+      "failed": "Non riuscita"
+    },
+    "meta": {
+      "queued": "In coda",
+      "running": "Iniziata {{time}}",
+      "finished": "{{duration}} · {{tokens}} token"
+    },
+    "detail": {
+      "description_one": "{{status}} · {{count}} esecuzione",
+      "description_other": "{{status}} · {{count}} esecuzioni",
+      "close": "Chiudi",
+      "runner": "In esecuzione su {{name}}",
+      "timeSpent": "Tempo impiegato",
+      "tokensGenerated": "Token generati",
+      "tokensTotal": "Token totali",
+      "model": "Modello",
+      "instructions": "Istruzioni",
+      "plan": "Piano",
+      "outcome": "Risultato",
+      "chat": "Chat",
+      "chatPlaceholder": "Fai una domanda o chiedi una modifica",
+      "chatHint": "L'agente risponde nella stessa sessione al prossimo controllo.",
+      "chatBusy": "Potrai scrivere quando l'agente avrà finito.",
+      "send": "Invia",
+      "roles": {
+        "user": "Tu:",
+        "agent": "Agente:"
+      },
+      "rerun": "Esegui di nuovo",
+      "delete": "Elimina",
+      "cancel": "Annulla",
+      "deleteTitle": "Eliminare questa attività?",
+      "deleteDescription": "«{{title}}», il suo risultato e la chat verranno eliminati."
+    }
+  },
+  "runner": {
+    "none": "Ancora nessun runner. Avvialo sul tuo computer per svolgere l'elenco.",
+    "online": "Runner {{name}} online · controllato {{time}}",
+    "offline": "Runner {{name}} offline · visto {{time}}"
+  },
+  "errors": {
+    "unexpectedResponse": "Il server ha inviato una risposta inattesa. Ricarica e riprova."
+  }
+}

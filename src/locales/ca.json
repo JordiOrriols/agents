@@ -1,0 +1,126 @@
+{
+  "app": {
+    "name": "Agents",
+    "subtitle": "Tasques per al teu agent local",
+    "pages": "Pàgines d'Agents",
+    "tasks": "Tasques",
+    "switchProject": "Canvia de projecte",
+    "language": "Idioma",
+    "errors": {
+      "title": "Alguna cosa ha anat malament"
+    },
+    "actions": {
+      "tryAgain": "Torna-ho a provar"
+    },
+    "loading": "Carregant Agents"
+  },
+  "auth": {
+    "signIn": "Iniciar sessió",
+    "signUp": "Crear compte",
+    "signOut": "Tancar sessió",
+    "signInTitle": "Iniciar sessió",
+    "signUpTitle": "Crear un compte",
+    "description": "Fes servir el mateix compte que a Planner i Ladders per veure els espais de treball del teu equip.",
+    "email": "Email",
+    "password": "Contrasenya",
+    "continueWithGitHub": "Continuar amb GitHub",
+    "forgotPassword": "Heu oblidat la contrasenya?",
+    "forgotPasswordTitle": "Restablir la contrasenya",
+    "forgotPasswordDescription": "Introduïu el vostre email i us enviarem un enllaç segur per restablir-la.",
+    "sendResetEmail": "Enviar email de recuperació",
+    "passwordResetSent": "Reviseu el vostre email per continuar amb el canvi de contrasenya.",
+    "backToSignIn": "Tornar a iniciar sessió",
+    "resetPasswordTitle": "Establir una contrasenya nova",
+    "resetPasswordDescription": "Trieu una contrasenya nova de com a mínim 8 caràcters.",
+    "newPassword": "Contrasenya nova",
+    "confirmPassword": "Confirmar contrasenya",
+    "updatePassword": "Actualitzar contrasenya",
+    "passwordTooShort": "La contrasenya ha de tenir com a mínim 8 caràcters.",
+    "passwordsDoNotMatch": "Les contrasenyes no coincideixen.",
+    "checkEmail": "Reviseu el vostre email per confirmar el compte.",
+    "switchToSignUp": "No teniu compte? Creeu-ne un",
+    "switchToSignIn": "Ja teniu compte? Inicieu sessió",
+    "notConfigured": "L'inici de sessió no està configurat en aquesta versió.",
+    "cancel": "Cancel·la",
+    "linkFailed": "Aquest enllaç no ha funcionat: {{message}}. Demana'n un de nou des d'Iniciar sessió."
+  },
+  "workspace": {
+    "empty": {
+      "title": "Encara no hi ha espai de treball",
+      "description": "Crea un espai de treball des del menú al costat de les pestanyes o demana al propietari que te'l comparteixi a Agents."
+    }
+  },
+  "welcome": {
+    "title": "Passa tasques al teu agent local.",
+    "description": "Apunta què cal fer. Un agent al teu ordinador planifica cada tasca, la fa i t'informa del resultat.",
+    "queue": "Una llista senzilla de dalt a baix",
+    "usage": "Temps i tokens de cada tasca",
+    "chat": "Xat de seguiment sobre el resultat",
+    "authUnavailable": "Configura VITE_SUPABASE_URL i VITE_SUPABASE_PUBLISHABLE_KEY per iniciar sessió. Agents no desa dades localment."
+  },
+  "tasks": {
+    "loading": "Carregant tasques",
+    "composer": {
+      "label": "Nova tasca",
+      "title": "Què ha de fer l'agent?",
+      "instructions": "Instruccions, context i com saber que ha acabat",
+      "hint": "L'agent la recull a la propera comprovació. Ctrl+Enter l'afegeix.",
+      "add": "Afegeix la tasca"
+    },
+    "sections": {
+      "queue": "Següents",
+      "done": "Fetes"
+    },
+    "empty": {
+      "title": "Encara no hi ha tasques",
+      "description": "Afegeix la primera tasca a dalt. El runner local les fa d'una en una.",
+      "viewer": "Aquí apareixen les tasques que afegeixen els editors de l'espai."
+    },
+    "status": {
+      "pending": "Pendent",
+      "running": "En curs",
+      "completed": "Completada",
+      "failed": "Fallida"
+    },
+    "meta": {
+      "queued": "A la cua",
+      "running": "Va començar {{time}}",
+      "finished": "{{duration}} · {{tokens}} tokens"
+    },
+    "detail": {
+      "description_one": "{{status}} · {{count}} execució",
+      "description_other": "{{status}} · {{count}} execucions",
+      "close": "Tanca",
+      "runner": "En execució a {{name}}",
+      "timeSpent": "Temps dedicat",
+      "tokensGenerated": "Tokens generats",
+      "tokensTotal": "Tokens totals",
+      "model": "Model",
+      "instructions": "Instruccions",
+      "plan": "Pla",
+      "outcome": "Resultat",
+      "chat": "Xat",
+      "chatPlaceholder": "Fes una pregunta o demana un canvi",
+      "chatHint": "L'agent respon a la mateixa sessió a la propera comprovació.",
+      "chatBusy": "Podràs escriure quan l'agent acabi.",
+      "send": "Envia",
+      "roles": {
+        "user": "Tu:",
+        "agent": "Agent:"
+      },
+      "rerun": "Torna a executar",
+      "delete": "Elimina",
+      "cancel": "Cancel·la",
+      "deleteTitle": "Vols eliminar aquesta tasca?",
+      "deleteDescription": "S'eliminaran «{{title}}», el seu resultat i el xat."
+    }
+  },
+  "runner": {
+    "none": "Encara no hi ha runner. Inicia'l al teu ordinador per fer la llista.",
+    "online": "Runner {{name}} connectat · ha comprovat {{time}}",
+    "offline": "Runner {{name}} desconnectat · vist {{time}}"
+  },
+  "errors": {
+    "unexpectedResponse": "El servidor ha enviat una resposta inesperada. Torna a carregar i prova-ho de nou."
+  }
+}
