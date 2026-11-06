@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "En file",
-      "running": "Commencée {{time}}",
       "finished": "{{duration}} · {{tokens}} tokens"
     },
     "detail": {
@@ -119,7 +118,18 @@
       "delete": "Supprimer",
       "cancel": "Annuler",
       "deleteTitle": "Supprimer cette tâche ?",
-      "deleteDescription": "« {{title}} », son résultat et sa discussion seront supprimés."
+      "deleteDescription": "« {{title}} », son résultat et sa discussion seront supprimés.",
+      "stats": {
+        "compactions": "Compactages",
+        "steps": "Étapes",
+        "modelTime": "Temps du modèle",
+        "tokensRead": "Jetons lus",
+        "tokensCached": "Jetons en cache",
+        "largestContext": "Contexte maximal",
+        "toolErrors": "Outils en échec",
+        "subagents": "Sous-agents",
+        "machine": "Ordinateur"
+      }
     }
   },
   "runner": {

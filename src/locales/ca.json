@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "A la cua",
-      "running": "Va començar {{time}}",
       "finished": "{{duration}} · {{tokens}} tokens"
     },
     "detail": {
@@ -119,7 +118,18 @@
       "delete": "Elimina",
       "cancel": "Cancel·la",
       "deleteTitle": "Vols eliminar aquesta tasca?",
-      "deleteDescription": "S'eliminaran «{{title}}», el seu resultat i el xat."
+      "deleteDescription": "S'eliminaran «{{title}}», el seu resultat i el xat.",
+      "stats": {
+        "compactions": "Compactacions",
+        "steps": "Passos",
+        "modelTime": "Temps del model",
+        "tokensRead": "Tokens llegits",
+        "tokensCached": "Tokens de memòria cau",
+        "largestContext": "Context màxim",
+        "toolErrors": "Eines fallides",
+        "subagents": "Subagents",
+        "machine": "Equip"
+      }
     }
   },
   "runner": {

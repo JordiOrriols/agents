@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   arrangeTasks,
+  elapsedSeconds,
+  spentTokens,
   formatDuration,
   formatRelative,
   formatTokens,
@@ -20,16 +22,44 @@ describe("parseRunMessage", () => {
     verification: "No verified current source",
     failure: "Objective not achieved",
   };
+  const stats = {
+    steps: 12,
+    compactions: 2,
+    compaction_seconds: 90,
+    model_seconds: 600,
+    tool_seconds: 30,
+    tokens_read: 40000,
+    tokens_cached: 10000,
+    tokens_generated: 2000,
+    largest_context: 45000,
+    context_limit: 65536,
+    tool_calls: 9,
+    tool_errors: 3,
+    pages_not_found: 2,
+    pages_forbidden: 1,
+    truncated_outputs: 4,
+    repeated_fetches: 1,
+    subagents: 1,
+    ended: "stop",
+    machine: "Apple M1 Max, 64 GB",
+    answer_recovered: false,
+  };
   it("preserves legacy chat and parses structured run summaries", () => {
     expect(parseRunMessage("A normal reply")).toBeNull();
     expect(parseRunMessage('{"unrelated":true}')).toBeNull();
     expect(parseRunMessage(JSON.stringify(run))).toEqual(run);
+  });
+  it("keeps the counters of a run", () => {
+    const withStats = { ...run, stats };
+    expect(parseRunMessage(JSON.stringify(withStats))).toEqual(withStats);
   });
   it("rejects malformed structured histories", () => {
     for (const overrides of [
       { version: 2 },
       { answer: 1 },
       { failure: false },
+      { stats: { ...stats, compactions: "many" } },
+      { stats: { ...stats, machine: undefined } },
       { phases: [{ name: "unknown", seconds: 0, tokens: 0, tools: [] }] },
       { phases: [{ name: "work", seconds: -1, tokens: 0, tools: [] }] },
       { phases: [{ name: "work", seconds: 1, tokens: 0, tools: ["private tool output"] }] },
@@ -50,6 +80,8 @@ const task = (id: string, overrides: Partial<AgentTask>): AgentTask => ({
   secondsSpent: 0,
   tokensGenerated: 0,
   tokensTotal: 0,
+  liveTokensGenerated: 0,
+  liveTokensTotal: 0,
   largestContext: 0,
   attempts: 0,
   model: "",
@@ -108,6 +140,47 @@ describe("formatters", () => {
     expect(formatRelative("2026-11-01T11:55:00Z", "en", now)).toBe("5 minutes ago");
     expect(formatRelative("2026-11-01T09:00:00Z", "en", now)).toBe("3 hours ago");
     expect(formatRelative("2026-10-31T12:00:00Z", "en", now)).toBe("yesterday");
+  });
+});
+
+describe("elapsedSeconds", () => {
+  const now = Date.parse("2026-11-01T12:00:00Z");
+  const task = { secondsSpent: 100, startedAt: "2026-11-01T11:59:00Z" } as AgentTask;
+
+  it("adds the run in progress to the time already spent", () => {
+    expect(elapsedSeconds({ ...task, status: "running" }, now)).toBe(160);
+  });
+
+  it("never goes backwards when the clocks disagree", () => {
+    expect(elapsedSeconds({ ...task, status: "running" }, now - 120_000)).toBe(100);
+  });
+
+  it("uses the recorded time once the task stops running", () => {
+    expect(elapsedSeconds({ ...task, status: "completed" }, now)).toBe(100);
+    expect(elapsedSeconds({ ...task, status: "running", startedAt: null }, now)).toBe(100);
+  });
+});
+
+describe("spentTokens", () => {
+  const figures = {
+    tokensGenerated: 10,
+    tokensTotal: 100,
+    liveTokensGenerated: 5,
+    liveTokensTotal: 50,
+  };
+
+  it("adds what a running task has reported so far", () => {
+    expect(spentTokens({ ...task("a", figures), status: "running" })).toEqual({
+      generated: 15,
+      total: 150,
+    });
+  });
+
+  it("ignores old live figures once the run ended", () => {
+    expect(spentTokens({ ...task("a", figures), status: "completed" })).toEqual({
+      generated: 10,
+      total: 100,
+    });
   });
 });
 

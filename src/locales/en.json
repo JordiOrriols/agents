@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "Queued",
-      "running": "Started {{time}}",
       "finished": "{{duration}} · {{tokens}} tokens"
     },
     "detail": {
@@ -119,7 +118,18 @@
       "delete": "Delete",
       "cancel": "Cancel",
       "deleteTitle": "Delete this task?",
-      "deleteDescription": "“{{title}}”, its outcome and chat will be removed."
+      "deleteDescription": "“{{title}}”, its outcome and chat will be removed.",
+      "stats": {
+        "compactions": "Compactions",
+        "steps": "Steps",
+        "modelTime": "Model time",
+        "tokensRead": "Tokens read",
+        "tokensCached": "Cached tokens",
+        "largestContext": "Largest context",
+        "toolErrors": "Failed tools",
+        "subagents": "Subagents",
+        "machine": "Computer"
+      }
     }
   },
   "runner": {

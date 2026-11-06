@@ -81,12 +81,21 @@ for a headless runner or change `web_port` if necessary. The server binds only t
    Unrelated results, unverifiable claims, malformed verdicts and exhausted budgets fail rather
    than being treated as completed. This model review checks relevance, not independent factual
    truth: a model can still make mistakes.
-6. Reports the time, tokens and result, including routing and review costs. The task also fails
+6. Reports the time, tokens and result, including routing and review costs. The result is a
+   Markdown report, rendered in the task, with the answer, its evidence and what is unverified.
+   A compaction that follows the final answer does not replace it. The task also fails
    when OpenCode exits with an error, gives no answer, or reaches `max_tokens` or `max_minutes`.
+
+While a task runs, the runner reports its model and tokens after every step and the app counts
+its time; tokens used by subagents appear when the run finishes.
 
 The task conversation saves a bounded **Run history** after each attempt: selected model and
 selection reason, phase durations/token counts, tool names and completion/error states, final
-answer and review. It does not upload tool arguments, tool output, files or private reasoning.
+answer and review, plus counters for comparing runs, models and computers later: steps,
+compactions, tokens read and cached, largest context, model and tool time, failed, truncated and
+repeated tool calls, subagents, how the run ended and the computer. They are stored in the run
+message, also for failed runs, and can be queried with `body::jsonb -> 'stats'`.
+It does not upload tool arguments, tool output, files or private reasoning.
 It is not a live tool stream and existing runs are not imported retroactively. The full local
 conversation remains available with `opencode session list` and `opencode export <session-id>`;
 exports can contain sensitive file/tool data, so review them before sharing.

@@ -41,6 +41,8 @@ const { client, auth, store } = vi.hoisted(() => {
         seconds_spent: 0,
         tokens_generated: 0,
         tokens_total: 0,
+        live_tokens_generated: 0,
+        live_tokens_total: 0,
         largest_context: 0,
         attempts: 0,
         model: "",
@@ -214,7 +216,7 @@ describe("Agents", () => {
     renderAt("/");
     const queue = await screen.findByRole("region", { name: "Up next" });
     expect(cardTitles(queue)).toEqual([
-      "Running nowStarted 2 minutes ago",
+      expect.stringMatching(/^Running now2m \d\ds · 0 tokens$/),
       "FirstQueued1",
       "SecondQueued2",
     ]);
@@ -295,7 +297,11 @@ describe("Agents", () => {
     expect(within(detail).getByTestId("task-instructions")).toHaveTextContent(
       "The login fails on Safari."
     );
-    expect(within(detail).getByTestId("task-plan")).toHaveTextContent("1. Reproduce 2. Fix");
+    expect(
+      within(within(detail).getByTestId("task-plan"))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(["Reproduce", "Fix"]);
     expect(within(detail).getByTestId("task-outcome")).toHaveTextContent("Fixed the cookie flag.");
     expect(within(detail).getByText("1h 02m")).toBeInTheDocument();
     expect(within(detail).getByText("12.3K")).toBeInTheDocument();
@@ -349,6 +355,28 @@ describe("Agents", () => {
           verification: "A sitemap is not an answer.",
           failure: "Objective not achieved",
           phases: [{ name: "work", seconds: 5, tokens: 100, tools: ["webfetch: completed"] }],
+          stats: {
+            steps: 12,
+            compactions: 3,
+            compaction_seconds: 90,
+            model_seconds: 600,
+            tool_seconds: 30,
+            tokens_read: 40000,
+            tokens_cached: 10000,
+            tokens_generated: 2000,
+            largest_context: 45000,
+            context_limit: 65536,
+            tool_calls: 9,
+            tool_errors: 4,
+            pages_not_found: 2,
+            pages_forbidden: 1,
+            truncated_outputs: 4,
+            repeated_fetches: 1,
+            subagents: 1,
+            ended: "stop",
+            machine: "Apple M1 Max, 64 GB",
+            answer_recovered: false,
+          },
         }),
       },
     ];
@@ -356,6 +384,9 @@ describe("Agents", () => {
     expect(await screen.findByText("Live availability could not be verified.")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Run history"));
     expect(screen.getByTestId("agent-run-history")).toHaveTextContent("webfetch");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Compactions3");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Failed tools4 / 9");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Apple M1 Max, 64 GB");
     expect(screen.getByText("A sitemap is not an answer.")).toBeVisible();
     expect(screen.getByRole("alert")).toHaveTextContent("Objective not achieved");
   });
@@ -369,6 +400,47 @@ describe("Agents", () => {
     await userEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("No tasks yet")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders agent reports as Markdown without trusting their HTML", async () => {
+    store.tasks = [
+      store.task("t1", {
+        title: "Report",
+        status: "completed",
+        outcome:
+          "## Result\n\n| Park | Rides |\n|---|---|\n| Ferrari Land | 16 |\n\n" +
+          "[Source](https://example.com)\n\n<img src=x onerror=alert(1)>",
+      }),
+    ];
+    renderAt("/tasks/t1");
+    const outcome = await screen.findByTestId("task-outcome");
+    expect(within(outcome).getByRole("heading", { name: "Result" })).toBeInTheDocument();
+    expect(within(outcome).getByRole("cell", { name: "16" })).toBeInTheDocument();
+    expect(within(outcome).getByRole("link", { name: "Source" })).toHaveAttribute(
+      "href",
+      "https://example.com"
+    );
+    expect(outcome.querySelector("img")).toBeNull();
+  });
+
+  it("counts the time of a running task", async () => {
+    store.tasks = [
+      store.task("t1", {
+        title: "Busy",
+        status: "running",
+        runner: "studio",
+        seconds_spent: 60,
+        tokens_total: 1000,
+        live_tokens_total: 500,
+        model: "ollama/qwen3.8:latest",
+        started_at: store.minutesAgo(2),
+      }),
+    ];
+    renderAt("/tasks/t1");
+    const detail = await screen.findByRole("dialog", { name: "Busy" });
+    expect(within(detail).getByText(/^3m \d\ds$/)).toBeInTheDocument();
+    expect(within(detail).getByText("1.5K")).toBeInTheDocument();
+    expect(within(detail).getByText("ollama/qwen3.8:latest")).toBeInTheDocument();
   });
 
   it("does not let a running task be deleted or chatted with", async () => {

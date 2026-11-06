@@ -14,6 +14,8 @@ const row = {
   seconds_spent: 61,
   tokens_generated: "1200",
   tokens_total: 54000,
+  live_tokens_generated: 0,
+  live_tokens_total: 0,
   largest_context: 18000,
   attempts: 1,
   model: "ollama/qwen3-coder:30b",

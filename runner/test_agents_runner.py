@@ -16,6 +16,10 @@ import agents_runner as runner  # noqa: E402
 FAKE_OPENCODE = r'''#!/usr/bin/env python3
 import json, os, sys, time
 args = sys.argv[1:]
+if args[0] == "export":
+    print("Exporting session: " + args[1])
+    print(os.environ.get("FAKE_EXPORT", "{}"))
+    sys.exit(0)
 prompt = args[-1]
 agent = args[args.index("--agent") + 1]
 session = args[args.index("--session") + 1] if "--session" in args else "ses_" + agent
@@ -34,6 +38,12 @@ if mode == "tools":
         print(json.dumps({"type": "tool_use", "sessionID": session, "part": {
             "tool": tool, "state": {"status": status, "input": {"password": "private"},
                                    "output": "secret HTML", "error": "private error"}}}))
+if mode == "denied":
+    print(json.dumps({"type": "tool_use", "sessionID": session, "part": {"tool": "bash", "state": {
+        "status": "error", "error": "The user rejected permission to use this specific tool call."}}}))
+    print(json.dumps({"type": "text", "sessionID": session, "part": {"text": "Let me execute."}}))
+    print(json.dumps({"type": "step_finish", "sessionID": session, "part": {"reason": "tool-calls", "tokens": {}}}))
+    sys.exit(0)
 if mode == "event-error":
     print(json.dumps({"type": "error", "error": {"data": {"message": "Model failed"}}}))
 for step in range(steps):
@@ -45,6 +55,93 @@ for step in range(steps):
     if mode == "tokens":
         time.sleep(0.2)
 '''
+
+
+def assistant(text, finish="stop", agent="build", *parts):
+    return {"info": {"role": "assistant", "agent": agent, "finish": finish},
+            "parts": [{"type": "text", "text": text}, *parts]}
+
+
+CONTINUE = {"info": {"role": "user"}, "parts": [{"type": "text", "text": "Continue", "synthetic": True}]}
+ANSWER_THEN_COMPACTION = [
+    {"info": {"role": "user"}, "parts": [{"type": "text", "text": "How many rides?"}]},
+    assistant("There are 40 rides."),
+    {"info": {"role": "user"}, "parts": [{"type": "compaction", "auto": True}]},
+    assistant("## Objective", agent="compaction"),
+    CONTINUE,
+    assistant("Which park do you mean?"),
+]
+
+
+class SettledAnswerTest(unittest.TestCase):
+    def test_returns_the_answer_from_before_the_compaction(self):
+        self.assertEqual(runner.settled_answer(ANSWER_THEN_COMPACTION), "There are 40 rides.")
+
+    def test_ignores_sessions_without_a_compaction(self):
+        self.assertIsNone(runner.settled_answer(ANSWER_THEN_COMPACTION[:2]))
+
+    def test_keeps_the_last_reply_when_the_agent_went_back_to_work(self):
+        worked = assistant("Done after more work.", "stop", "build", {"type": "tool", "tool": "bash"})
+        self.assertIsNone(runner.settled_answer([*ANSWER_THEN_COMPACTION[:5], worked]))
+
+    def test_keeps_the_last_reply_when_the_compaction_interrupted_the_work(self):
+        interrupted = [assistant("Fetching pages.", "tool-calls"), *ANSWER_THEN_COMPACTION[2:]]
+        self.assertIsNone(runner.settled_answer(interrupted))
+
+    def test_keeps_the_reply_to_a_new_request_after_the_compaction(self):
+        question = {"info": {"role": "user"}, "parts": [{"type": "text", "text": "And in Ferrari Land?"}]}
+        self.assertIsNone(runner.settled_answer([*ANSWER_THEN_COMPACTION, question, assistant("16.")]))
+
+
+def timed(message, created, completed):
+    message["info"]["time"] = {"created": created, "completed": completed}
+    return message
+
+
+def tool(name, status="completed", start=0, end=0, **state):
+    return {"type": "tool", "tool": name, "state": {"status": status, "time": {"start": start, "end": end}, **state}}
+
+
+class SessionStatsTest(unittest.TestCase):
+    config = None
+
+    def stats(self, sessions, since=0):
+        with unittest.mock.patch.object(runner, "export_session", lambda _, session: sessions.get(session, [])):
+            return runner.session_stats(self.config, "main", since)
+
+    def test_counts_a_run_with_its_subagents_and_no_content(self):
+        page = {"input": {"url": "https://secret.example/private"}, "metadata": {"truncated": True}}
+        first = assistant("private answer", "tool-calls", "build",
+                          tool("webfetch", start=1_000, end=3_000, **page),
+                          tool("webfetch", start=3_000, end=4_000, **page),
+                          tool("webfetch", "error", error="StatusCode: non 2xx status code (404 GET https://x)"),
+                          tool("webfetch", "error", error="StatusCode: non 2xx status code (403 GET https://y)"),
+                          tool("task", start=4_000, end=9_000, metadata={"sessionId": "child"}))
+        first["info"]["tokens"] = {"total": 500, "input": 300, "output": 40, "reasoning": 10, "cache": {"read": 150}}
+        compaction = assistant("summary", agent="compaction")
+        compaction["info"]["tokens"] = {"total": 100, "input": 80, "output": 20, "cache": {"read": 0}}
+        child = assistant("child notes", "stop", "explore")
+        child["info"]["tokens"] = {"total": 900, "input": 700, "output": 5, "cache": {"read": 0}}
+        stats = self.stats({"main": [timed(first, 1_000, 21_000), timed(compaction, 22_000, 25_000),
+                                     timed(assistant("done"), 26_000, 28_000)],
+                            "child": [timed(child, 4_000, 9_000)]})
+        self.assertEqual(stats, {
+            "steps": 3, "compactions": 1, "compaction_seconds": 3, "model_seconds": 19, "tool_seconds": 3,
+            "tokens_read": 1080, "tokens_cached": 150, "tokens_generated": 75, "largest_context": 900,
+            "tool_calls": 5, "tool_errors": 2, "pages_not_found": 1, "pages_forbidden": 1,
+            "truncated_outputs": 2, "repeated_fetches": 1, "subagents": 1, "ended": "stop"})
+        self.assertNotIn("secret", json.dumps(stats))
+        self.assertNotIn("private", json.dumps(stats))
+
+    def test_counts_only_this_run_of_a_continued_session(self):
+        old, new = timed(assistant("old"), 1_000, 2_000), timed(assistant("new"), 5_000, 6_000)
+        self.assertEqual(self.stats({"main": [old, new]}, since=4_000)["steps"], 1)
+
+    def test_marks_a_run_that_was_cut_off(self):
+        self.assertEqual(self.stats({"main": [timed(assistant("working", None), 1_000, 0)]})["ended"], "interrupted")
+
+    def test_has_nothing_to_report_without_a_session(self):
+        self.assertIsNone(self.stats({}))
 
 
 class FakeApi:
@@ -78,7 +175,7 @@ class RunnerTestCase(unittest.TestCase):
                                     opencode=str(script), max_minutes=1, max_tokens=10_000,
                                     auto_model=False)
         self.env = {"FAKE_LOG": str(self.log)}
-        self.previous = {key: os.environ.get(key) for key in ("FAKE_LOG", "FAKE_MODE")}
+        self.previous = {key: os.environ.get(key) for key in ("FAKE_LOG", "FAKE_MODE", "FAKE_EXPORT")}
         os.environ.update(self.env)
 
     def tearDown(self):
@@ -151,6 +248,33 @@ class OpenCodeTest(RunnerTestCase):
             "limit": {"context": 32768, "output": 8192}}}}})
         self.assertEqual(call["config"]["agent"]["task-review"]["tools"], {"*": False})
         self.assertNotIn("--auto", call["args"])
+
+    def test_keeps_the_answer_a_compaction_replaced(self):
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": ANSWER_THEN_COMPACTION})
+        self.assertEqual(self.run_once().answer, "There are 40 rides.")
+
+    def test_reads_an_export_larger_than_a_pipe_buffer(self):
+        padding = assistant("x" * 100_000, "tool-calls")
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": [padding, *ANSWER_THEN_COMPACTION]})
+        self.assertEqual(self.run_once().answer, "There are 40 rides.")
+
+    def test_keeps_the_streamed_answer_when_the_session_cannot_be_exported(self):
+        os.environ["FAKE_EXPORT"] = "not json"
+        self.assertEqual(self.run_once().answer, "build answer 0")
+
+    def test_marks_an_answer_it_had_to_recover(self):
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": ANSWER_THEN_COMPACTION})
+        self.assertTrue(self.run_once().recovered)
+
+    def test_reports_a_denied_tool_instead_of_a_half_finished_reply(self):
+        os.environ["FAKE_MODE"] = "denied"
+        result = self.run_once()
+        self.assertEqual(result.failure, "OpenCode denied permission to use bash, so the agent could not finish.")
+
+    def test_reports_each_finished_step(self):
+        seen = []
+        self.run_once(on_progress=lambda run: seen.append(run.tokens_total))
+        self.assertEqual(seen, [1000])
 
     def test_continues_a_session_and_can_auto_approve(self):
         self.config.auto_approve = True
@@ -275,6 +399,45 @@ class ProcessTaskTest(RunnerTestCase):
         history = json.loads(report["reply"])
         self.assertEqual(history["phases"][1]["tools"], ["webfetch: completed"])
         self.assertEqual(history["answer"], "Tickets, hotels, parks")
+        self.assertNotIn("stats", history)
+
+    def test_reports_the_model_and_tokens_while_it_runs(self):
+        def fake(config, prompt, **options):
+            run = runner.Run(answer="done", session="s", tokens_generated=10, tokens_total=100)
+            options["on_progress"](run)
+            return run
+
+        api = FakeApi()
+        runner.process_task(api, self.config, self.task, runner=fake)
+        reports = [args for name, args in api.calls if name == "agents_report_progress"]
+        self.assertEqual(reports[0]["run_tokens_total"], 0)
+        self.assertEqual(reports[0]["run_model"], self.config.model)
+        self.assertEqual([report["run_tokens_total"] for report in reports[1:4]], [100, 100, 200])
+
+    def test_a_failed_progress_report_does_not_stop_the_run(self):
+        class Unreachable(FakeApi):
+            def rpc(self, name, args):
+                if name == "agents_report_progress":
+                    raise runner.SupabaseError("function not found")
+                return super().rpc(name, args)
+
+        def fake(config, prompt, **options):
+            answer = '{"status":"completed","reason":"ok"}' if options["agent"] == "task-review" else "done"
+            return runner.Run(answer=answer, session="s")
+
+        self.assertEqual(runner.process_task(Unreachable(), self.config, self.task, runner=fake), "completed")
+
+    def test_keeps_the_counters_of_a_failed_run(self):
+        def fake(config, prompt, **options):
+            return runner.Run(session="s", stopped="time limit (30 min)", recovered=True)
+
+        api = FakeApi()
+        with unittest.mock.patch.object(runner, "session_stats", return_value={"compactions": 4}) as stats, \
+                unittest.mock.patch.object(runner, "machine_name", return_value="Test Mac, 64 GB"):
+            self.assertEqual(runner.process_task(api, self.config, self.task, runner=fake), "failed")
+        self.assertEqual(stats.call_args.args[1], "s")
+        self.assertEqual(json.loads(self.finish(api)["reply"])["stats"], {
+            "compactions": 4, "answer_recovered": True, "machine": "Test Mac, 64 GB", "context_limit": 32768})
 
     def test_rejects_invalid_or_missing_review(self):
         for answer in ("ok", '{"status":"completed"}', '{"status":"completed","reason":""}'):

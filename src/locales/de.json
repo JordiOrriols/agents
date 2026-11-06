@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "In der Warteschlange",
-      "running": "Gestartet {{time}}",
       "finished": "{{duration}} · {{tokens}} Tokens"
     },
     "detail": {
@@ -119,7 +118,18 @@
       "delete": "Löschen",
       "cancel": "Abbrechen",
       "deleteTitle": "Diese Aufgabe löschen?",
-      "deleteDescription": "„{{title}}“, das Ergebnis und der Chat werden entfernt."
+      "deleteDescription": "„{{title}}“, das Ergebnis und der Chat werden entfernt.",
+      "stats": {
+        "compactions": "Komprimierungen",
+        "steps": "Schritte",
+        "modelTime": "Modellzeit",
+        "tokensRead": "Gelesene Tokens",
+        "tokensCached": "Tokens aus dem Cache",
+        "largestContext": "Größter Kontext",
+        "toolErrors": "Fehlgeschlagene Tools",
+        "subagents": "Subagenten",
+        "machine": "Computer"
+      }
     }
   },
   "runner": {

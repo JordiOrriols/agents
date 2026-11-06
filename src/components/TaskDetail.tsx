@@ -2,8 +2,15 @@ import React, { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, ConfirmDialog, ErrorState, Modal, Textarea, cn } from "@jordiorriols/ui";
 import { RotateCcw, Trash2 } from "@jordiorriols/ui/icons";
-import { useTaskActions, useTaskMessages } from "@/hooks/useTasks";
-import { formatDuration, formatTokens, parseRunMessage, type AgentTask } from "@/lib/tasks";
+import { useElapsedSeconds, useTaskActions, useTaskMessages } from "@/hooks/useTasks";
+import {
+  formatDuration,
+  formatTokens,
+  parseRunMessage,
+  spentTokens,
+  type AgentTask,
+} from "@/lib/tasks";
+import { Markdown } from "./Markdown";
 import { StatusMark } from "./StatusMark";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -22,6 +29,17 @@ function Text({ children, testId }: { children: string; testId: string }) {
       className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-3 py-2 text-sm leading-relaxed"
     >
       {children}
+    </div>
+  );
+}
+
+function Report({ children, testId }: { children: string; testId: string }) {
+  return (
+    <div
+      data-testid={testId}
+      className="max-h-[32rem] overflow-y-auto rounded-md bg-muted/50 px-3 py-2 text-sm leading-relaxed"
+    >
+      <Markdown>{children}</Markdown>
     </div>
   );
 }
@@ -49,7 +67,7 @@ function AgentMessage({ body }: { body: string }) {
   if (!run) return <>{body}</>;
   return (
     <div className="space-y-3" data-testid="agent-run-history">
-      <p>{run.answer}</p>
+      <Markdown>{run.answer}</Markdown>
       <details>
         <summary className="cursor-pointer font-medium">{t("tasks.detail.history")}</summary>
         <div className="mt-2 space-y-2">
@@ -81,6 +99,37 @@ function AgentMessage({ body }: { body: string }) {
               </li>
             ))}
           </ol>
+          {run.stats && (
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="run-stats">
+              <Stat
+                label={t("tasks.detail.stats.compactions")}
+                value={String(run.stats.compactions)}
+              />
+              <Stat label={t("tasks.detail.stats.steps")} value={String(run.stats.steps)} />
+              <Stat
+                label={t("tasks.detail.stats.modelTime")}
+                value={formatDuration(run.stats.model_seconds)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.tokensRead")}
+                value={formatTokens(run.stats.tokens_read, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.tokensCached")}
+                value={formatTokens(run.stats.tokens_cached, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.largestContext")}
+                value={formatTokens(run.stats.largest_context, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.toolErrors")}
+                value={`${run.stats.tool_errors} / ${run.stats.tool_calls}`}
+              />
+              <Stat label={t("tasks.detail.stats.subagents")} value={String(run.stats.subagents)} />
+              <Stat label={t("tasks.detail.stats.machine")} value={run.stats.machine} />
+            </dl>
+          )}
           {run.verification && <p>{run.verification}</p>}
           {run.failure && <ErrorState message={run.failure} />}
         </div>
@@ -168,6 +217,8 @@ export function TaskDetail({
   const { t, i18n } = useTranslation();
   const { rerun, remove } = useTaskActions(task.workspaceId);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const elapsed = useElapsedSeconds(task);
+  const tokens = spentTokens(task);
   const finished = task.status === "completed" || task.status === "failed";
   const failure = rerun.error ?? remove.error;
 
@@ -213,14 +264,14 @@ export function TaskDetail({
           )}
           {failure && <ErrorState message={failure.message} />}
           <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 sm:grid-cols-4">
-            <Stat label={t("tasks.detail.timeSpent")} value={formatDuration(task.secondsSpent)} />
+            <Stat label={t("tasks.detail.timeSpent")} value={formatDuration(elapsed)} />
             <Stat
               label={t("tasks.detail.tokensGenerated")}
-              value={formatTokens(task.tokensGenerated, i18n.language)}
+              value={formatTokens(tokens.generated, i18n.language)}
             />
             <Stat
               label={t("tasks.detail.tokensTotal")}
-              value={formatTokens(task.tokensTotal, i18n.language)}
+              value={formatTokens(tokens.total, i18n.language)}
             />
             <Stat label={t("tasks.detail.model")} value={task.model || "—"} />
           </dl>
@@ -237,12 +288,12 @@ export function TaskDetail({
           </Section>
           {task.plan && (
             <Section title={t("tasks.detail.plan")}>
-              <Text testId="task-plan">{task.plan}</Text>
+              <Report testId="task-plan">{task.plan}</Report>
             </Section>
           )}
           {task.outcome && (
             <Section title={t("tasks.detail.outcome")}>
-              <Text testId="task-outcome">{task.outcome}</Text>
+              <Report testId="task-outcome">{task.outcome}</Report>
             </Section>
           )}
           <Chat task={task} canEdit={canEdit} />

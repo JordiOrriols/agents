@@ -15,6 +15,8 @@ export interface AgentTask {
   secondsSpent: number;
   tokensGenerated: number;
   tokensTotal: number;
+  liveTokensGenerated: number;
+  liveTokensTotal: number;
   largestContext: number;
   attempts: number;
   model: string;
@@ -47,7 +49,35 @@ export interface RunMessage {
   answer: string;
   verification: string;
   failure: string | null;
+  stats?: RunStats;
 }
+
+const RUN_COUNTERS = [
+  "steps",
+  "compactions",
+  "compaction_seconds",
+  "model_seconds",
+  "tool_seconds",
+  "tokens_read",
+  "tokens_cached",
+  "tokens_generated",
+  "largest_context",
+  "context_limit",
+  "tool_calls",
+  "tool_errors",
+  "pages_not_found",
+  "pages_forbidden",
+  "truncated_outputs",
+  "repeated_fetches",
+  "subagents",
+] as const;
+
+/** Counters of a run, kept to compare runs, models and computers later. */
+export type RunStats = Record<(typeof RUN_COUNTERS)[number], number> & {
+  ended: string;
+  machine: string;
+  answer_recovered: boolean;
+};
 
 export function parseRunMessage(body: string): RunMessage | null {
   let value: unknown;
@@ -61,12 +91,19 @@ export function parseRunMessage(body: string): RunMessage | null {
     typeof item === "object" && item !== null && !Array.isArray(item);
   if (!record(value) || value["kind"] !== "agents-run") return null;
   const number = (item: unknown) => typeof item === "number" && Number.isFinite(item) && item >= 0;
+  const validStats = (stats: unknown) =>
+    record(stats) &&
+    RUN_COUNTERS.every((field) => number(stats[field])) &&
+    typeof stats["ended"] === "string" &&
+    typeof stats["machine"] === "string" &&
+    typeof stats["answer_recovered"] === "boolean";
   const valid = (value: Record<string, unknown>): value is Record<string, unknown> & RunMessage =>
     value["version"] === 1 &&
     ["model", "selection", "answer", "verification"].every(
       (field) => typeof value[field] === "string"
     ) &&
     (value["failure"] === null || typeof value["failure"] === "string") &&
+    (value["stats"] === undefined || validStats(value["stats"])) &&
     Array.isArray(value["phases"]) &&
     value["phases"].every(
       (phase: unknown) =>
@@ -111,6 +148,21 @@ export function arrangeTasks(tasks: AgentTask[]) {
       (a, b) => time(b.finishedAt) - time(a.finishedAt) || time(b.createdAt) - time(a.createdAt)
     );
   return { queue, done };
+}
+
+/** Time spent on a task, including the run in progress. */
+export function elapsedSeconds(task: AgentTask, now: number) {
+  if (task.status !== "running" || !task.startedAt) return task.secondsSpent;
+  return task.secondsSpent + Math.max(0, (now - Date.parse(task.startedAt)) / 1000);
+}
+
+/** Tokens used on a task, including what the run in progress reported so far. */
+export function spentTokens(task: AgentTask) {
+  const running = task.status === "running";
+  return {
+    generated: task.tokensGenerated + (running ? task.liveTokensGenerated : 0),
+    total: task.tokensTotal + (running ? task.liveTokensTotal : 0),
+  };
 }
 
 export function formatDuration(seconds: number) {
