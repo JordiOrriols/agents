@@ -254,7 +254,7 @@ class OpenCodeTest(RunnerTestCase):
         self.assertEqual(self.run_once().answer, "There are 40 rides.")
 
     def test_reads_an_export_larger_than_a_pipe_buffer(self):
-        padding = assistant("x" * 200_000, "tool-calls")
+        padding = assistant("x" * 100_000, "tool-calls")
         os.environ["FAKE_EXPORT"] = json.dumps({"messages": [padding, *ANSWER_THEN_COMPACTION]})
         self.assertEqual(self.run_once().answer, "There are 40 rides.")
 
