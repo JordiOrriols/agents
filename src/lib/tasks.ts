@@ -15,6 +15,8 @@ export interface AgentTask {
   secondsSpent: number;
   tokensGenerated: number;
   tokensTotal: number;
+  liveTokensGenerated: number;
+  liveTokensTotal: number;
   largestContext: number;
   attempts: number;
   model: string;
@@ -152,6 +154,15 @@ export function arrangeTasks(tasks: AgentTask[]) {
 export function elapsedSeconds(task: AgentTask, now: number) {
   if (task.status !== "running" || !task.startedAt) return task.secondsSpent;
   return task.secondsSpent + Math.max(0, (now - Date.parse(task.startedAt)) / 1000);
+}
+
+/** Tokens used on a task, including what the run in progress reported so far. */
+export function spentTokens(task: AgentTask) {
+  const running = task.status === "running";
+  return {
+    generated: task.tokensGenerated + (running ? task.liveTokensGenerated : 0),
+    total: task.tokensTotal + (running ? task.liveTokensTotal : 0),
+  };
 }
 
 export function formatDuration(seconds: number) {

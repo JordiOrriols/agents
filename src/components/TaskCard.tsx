@@ -2,18 +2,17 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useElapsedSeconds } from "@/hooks/useTasks";
-import { formatDuration, formatTokens, type AgentTask } from "@/lib/tasks";
+import { formatDuration, formatTokens, spentTokens, type AgentTask } from "@/lib/tasks";
 import { StatusMark } from "./StatusMark";
 
 function TaskMeta({ task }: { task: AgentTask }) {
   const { t, i18n } = useTranslation();
   const elapsed = useElapsedSeconds(task);
-  if (task.status === "running")
-    return task.startedAt ? formatDuration(elapsed) : t("tasks.status.running");
+  if (task.status === "running" && !task.startedAt) return t("tasks.status.running");
   if (task.status === "pending") return t("tasks.meta.queued");
   return t("tasks.meta.finished", {
-    duration: formatDuration(task.secondsSpent),
-    tokens: formatTokens(task.tokensGenerated, i18n.language),
+    duration: formatDuration(elapsed),
+    tokens: formatTokens(spentTokens(task).generated, i18n.language),
   });
 }
 

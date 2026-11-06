@@ -39,6 +39,8 @@ function parseTask(row: unknown): AgentTask {
     secondsSpent: count(row["seconds_spent"]),
     tokensGenerated: count(row["tokens_generated"]),
     tokensTotal: count(row["tokens_total"]),
+    liveTokensGenerated: count(row["live_tokens_generated"]),
+    liveTokensTotal: count(row["live_tokens_total"]),
     largestContext: count(row["largest_context"]),
     attempts: count(row["attempts"]),
     model: text(row["model"]),

@@ -271,6 +271,11 @@ class OpenCodeTest(RunnerTestCase):
         result = self.run_once()
         self.assertEqual(result.failure, "OpenCode denied permission to use bash, so the agent could not finish.")
 
+    def test_reports_each_finished_step(self):
+        seen = []
+        self.run_once(on_progress=lambda run: seen.append(run.tokens_total))
+        self.assertEqual(seen, [1000])
+
     def test_continues_a_session_and_can_auto_approve(self):
         self.config.auto_approve = True
         self.run_once(session="ses_old")
@@ -395,6 +400,32 @@ class ProcessTaskTest(RunnerTestCase):
         self.assertEqual(history["phases"][1]["tools"], ["webfetch: completed"])
         self.assertEqual(history["answer"], "Tickets, hotels, parks")
         self.assertNotIn("stats", history)
+
+    def test_reports_the_model_and_tokens_while_it_runs(self):
+        def fake(config, prompt, **options):
+            run = runner.Run(answer="done", session="s", tokens_generated=10, tokens_total=100)
+            options["on_progress"](run)
+            return run
+
+        api = FakeApi()
+        runner.process_task(api, self.config, self.task, runner=fake)
+        reports = [args for name, args in api.calls if name == "agents_report_progress"]
+        self.assertEqual(reports[0]["run_tokens_total"], 0)
+        self.assertEqual(reports[0]["run_model"], self.config.model)
+        self.assertEqual([report["run_tokens_total"] for report in reports[1:4]], [100, 100, 200])
+
+    def test_a_failed_progress_report_does_not_stop_the_run(self):
+        class Unreachable(FakeApi):
+            def rpc(self, name, args):
+                if name == "agents_report_progress":
+                    raise runner.SupabaseError("function not found")
+                return super().rpc(name, args)
+
+        def fake(config, prompt, **options):
+            answer = '{"status":"completed","reason":"ok"}' if options["agent"] == "task-review" else "done"
+            return runner.Run(answer=answer, session="s")
+
+        self.assertEqual(runner.process_task(Unreachable(), self.config, self.task, runner=fake), "completed")
 
     def test_keeps_the_counters_of_a_failed_run(self):
         def fake(config, prompt, **options):

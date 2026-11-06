@@ -3,7 +3,13 @@ import { useTranslation } from "react-i18next";
 import { Button, ConfirmDialog, ErrorState, Modal, Textarea, cn } from "@jordiorriols/ui";
 import { RotateCcw, Trash2 } from "@jordiorriols/ui/icons";
 import { useElapsedSeconds, useTaskActions, useTaskMessages } from "@/hooks/useTasks";
-import { formatDuration, formatTokens, parseRunMessage, type AgentTask } from "@/lib/tasks";
+import {
+  formatDuration,
+  formatTokens,
+  parseRunMessage,
+  spentTokens,
+  type AgentTask,
+} from "@/lib/tasks";
 import { Markdown } from "./Markdown";
 import { StatusMark } from "./StatusMark";
 
@@ -212,6 +218,7 @@ export function TaskDetail({
   const { rerun, remove } = useTaskActions(task.workspaceId);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const elapsed = useElapsedSeconds(task);
+  const tokens = spentTokens(task);
   const finished = task.status === "completed" || task.status === "failed";
   const failure = rerun.error ?? remove.error;
 
@@ -260,11 +267,11 @@ export function TaskDetail({
             <Stat label={t("tasks.detail.timeSpent")} value={formatDuration(elapsed)} />
             <Stat
               label={t("tasks.detail.tokensGenerated")}
-              value={formatTokens(task.tokensGenerated, i18n.language)}
+              value={formatTokens(tokens.generated, i18n.language)}
             />
             <Stat
               label={t("tasks.detail.tokensTotal")}
-              value={formatTokens(task.tokensTotal, i18n.language)}
+              value={formatTokens(tokens.total, i18n.language)}
             />
             <Stat label={t("tasks.detail.model")} value={task.model || "—"} />
           </dl>

@@ -79,6 +79,9 @@ for a headless runner or change `web_port` if necessary. The server binds only t
    A compaction that follows the final answer does not replace it. The task also fails
    when OpenCode exits with an error, gives no answer, or reaches `max_tokens` or `max_minutes`.
 
+While a task runs, the runner reports its model and tokens after every step and the app counts
+its time; tokens used by subagents appear when the run finishes.
+
 The task conversation saves a bounded **Run history** after each attempt: selected model and
 selection reason, phase durations/token counts, tool names and completion/error states, final
 answer and review, plus counters for comparing runs, models and computers later: steps,

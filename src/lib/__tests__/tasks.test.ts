@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   arrangeTasks,
   elapsedSeconds,
+  spentTokens,
   formatDuration,
   formatRelative,
   formatTokens,
@@ -79,6 +80,8 @@ const task = (id: string, overrides: Partial<AgentTask>): AgentTask => ({
   secondsSpent: 0,
   tokensGenerated: 0,
   tokensTotal: 0,
+  liveTokensGenerated: 0,
+  liveTokensTotal: 0,
   largestContext: 0,
   attempts: 0,
   model: "",
@@ -155,6 +158,29 @@ describe("elapsedSeconds", () => {
   it("uses the recorded time once the task stops running", () => {
     expect(elapsedSeconds({ ...task, status: "completed" }, now)).toBe(100);
     expect(elapsedSeconds({ ...task, status: "running", startedAt: null }, now)).toBe(100);
+  });
+});
+
+describe("spentTokens", () => {
+  const figures = {
+    tokensGenerated: 10,
+    tokensTotal: 100,
+    liveTokensGenerated: 5,
+    liveTokensTotal: 50,
+  };
+
+  it("adds what a running task has reported so far", () => {
+    expect(spentTokens({ ...task("a", figures), status: "running" })).toEqual({
+      generated: 15,
+      total: 150,
+    });
+  });
+
+  it("ignores old live figures once the run ended", () => {
+    expect(spentTokens({ ...task("a", figures), status: "completed" })).toEqual({
+      generated: 10,
+      total: 100,
+    });
   });
 });
 

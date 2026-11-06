@@ -41,6 +41,8 @@ const { client, auth, store } = vi.hoisted(() => {
         seconds_spent: 0,
         tokens_generated: 0,
         tokens_total: 0,
+        live_tokens_generated: 0,
+        live_tokens_total: 0,
         largest_context: 0,
         attempts: 0,
         model: "",
@@ -214,7 +216,7 @@ describe("Agents", () => {
     renderAt("/");
     const queue = await screen.findByRole("region", { name: "Up next" });
     expect(cardTitles(queue)).toEqual([
-      expect.stringMatching(/^Running now2m \d\ds$/),
+      expect.stringMatching(/^Running now2m \d\ds · 0 tokens$/),
       "FirstQueued1",
       "SecondQueued2",
     ]);
@@ -428,12 +430,17 @@ describe("Agents", () => {
         status: "running",
         runner: "studio",
         seconds_spent: 60,
+        tokens_total: 1000,
+        live_tokens_total: 500,
+        model: "ollama/qwen3.8:latest",
         started_at: store.minutesAgo(2),
       }),
     ];
     renderAt("/tasks/t1");
     const detail = await screen.findByRole("dialog", { name: "Busy" });
     expect(within(detail).getByText(/^3m \d\ds$/)).toBeInTheDocument();
+    expect(within(detail).getByText("1.5K")).toBeInTheDocument();
+    expect(within(detail).getByText("ollama/qwen3.8:latest")).toBeInTheDocument();
   });
 
   it("does not let a running task be deleted or chatted with", async () => {

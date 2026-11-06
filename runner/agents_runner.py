@@ -329,7 +329,8 @@ def session_stats(config: Config, session: str, since_ms: int) -> dict[str, Any]
 
 def run_opencode(config: Config, prompt: str, *, title: str, agent: str, session: str | None,
                  token_budget: int, seconds_budget: float, stop_event: threading.Event | None = None,
-                 popen: Callable[..., Any] = subprocess.Popen) -> Run:
+                 popen: Callable[..., Any] = subprocess.Popen,
+                 on_progress: Callable[[Run], None] | None = None) -> Run:
     command = [config.opencode, "run", "--format", "json", "-m", config.model, "--agent", agent,
                "--title", title, "--dir", str(config.workspace_dir)]
     if session:
@@ -390,6 +391,8 @@ def run_opencode(config: Config, prompt: str, *, title: str, agent: str, session
             result.finish = part.get("reason") or result.finish
             if result.tokens_total > token_budget:
                 stop(f"token limit ({config.max_tokens:,})")
+            if on_progress:
+                on_progress(result)
         elif event.get("type") == "error":
             error = event.get("error") or {}
             result.error = str((error.get("data") or {}).get("message") or error.get("name") or error)
@@ -498,8 +501,20 @@ def process_task(api: Supabase, config: Config, task: dict[str, Any],
     selection = ""
     routing_failure = None
 
+    def report_progress(current: Run | None = None) -> None:
+        """Best effort: the app showing old figures must never stop the run."""
+        done = [*runs, current] if current else runs
+        try:
+            api.rpc("agents_report_progress", {
+                "task": task["id"], "runner_name": config.name, "run_model": config.model,
+                "run_tokens_generated": sum(run.tokens_generated for run in done),
+                "run_tokens_total": sum(run.tokens_total for run in done)})
+        except (SupabaseError, urllib.error.URLError, OSError) as error:
+            print(f"  Could not report progress: {error}", flush=True)
+
     def step(prompt: str, agent: str, session: str | None) -> Run:
         nonlocal tokens_left, seconds_left
+        report_progress()
         phases.append({"plan": "plan", "build": "work", "task-review": "review",
                        "task-router": "routing"}[agent])
         if tokens_left <= 0 or seconds_left <= 0:
@@ -507,7 +522,7 @@ def process_task(api: Supabase, config: Config, task: dict[str, Any],
             runs.append(run)
             return run
         run = runner(config, prompt, title=title, agent=agent, session=session, token_budget=tokens_left,
-                     seconds_budget=seconds_left, stop_event=stop_event)
+                     seconds_budget=seconds_left, stop_event=stop_event, on_progress=report_progress)
         runs.append(run)
         tokens_left -= run.tokens_total
         seconds_left -= run.seconds
