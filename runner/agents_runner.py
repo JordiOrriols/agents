@@ -11,6 +11,7 @@ Usage: python3 runner/agents_runner.py [--config runner/config.toml] [--once]
 from __future__ import annotations
 
 import argparse
+import base64
 import dataclasses
 import datetime
 import json
@@ -25,6 +26,8 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
+import urllib.parse
+import webbrowser
 from pathlib import Path
 from typing import Any, Callable
 
@@ -52,6 +55,8 @@ class Config:
     opencode: str = "opencode"
     auto_model: bool = True
     ollama_url: str = "http://localhost:11434"
+    web_enabled: bool = True
+    web_port: int = 4096
 
 
 SECRET_FIELDS = {
@@ -63,7 +68,8 @@ SECRET_FIELDS = {
 }
 SETTINGS = {"name": str, "workspace_id": str, "model": str, "context": int, "output": int,
             "max_tokens": int, "max_minutes": float, "poll_minutes": float, "plan_first": bool,
-            "auto_approve": bool, "opencode": str, "auto_model": bool, "ollama_url": str}
+            "auto_approve": bool, "opencode": str, "auto_model": bool, "ollama_url": str,
+            "web_enabled": bool, "web_port": int}
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -96,6 +102,8 @@ def load_config(path: Path, env: dict[str, str] | None = None, dotenv: Path | No
         if data.get(key) not in (None, ""):
             values[key] = kind(data[key])
     config = Config(**values)
+    if not 1 <= config.web_port <= 65535:
+        raise SystemExit("web_port must be between 1 and 65535.")
     if not config.workspace_dir.is_dir():
         raise SystemExit(f"The workspace folder {config.workspace_dir} does not exist.")
     return config
@@ -505,6 +513,67 @@ def work(api: Supabase, config: Config, stop_event: threading.Event, once: bool 
         stop_event.wait(config.poll_minutes * 60)
 
 
+def web_ready(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(url + "/global/health", timeout=2) as response:
+            health = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"OpenCode web health check failed ({error.code}) at {url}.") from error
+    except urllib.error.URLError:
+        return False
+    except ValueError as error:
+        raise RuntimeError(f"The service at {url} is not an OpenCode server.") from error
+    if not isinstance(health, dict) or health.get("healthy") is not True or not health.get("version"):
+        raise RuntimeError(f"The service at {url} is not a healthy OpenCode server.")
+    return True
+
+
+def start_web(config: Config, stop_event: threading.Event) -> subprocess.Popen | None:
+    url = f"http://127.0.0.1:{config.web_port}"
+    process = None
+    try:
+        if not web_ready(url):
+            process = subprocess.Popen(
+                [config.opencode, "serve", "--hostname", "127.0.0.1", "--port", str(config.web_port)],
+                cwd=config.workspace_dir, env={**os.environ, "PWD": str(config.workspace_dir)},
+                stdin=subprocess.DEVNULL)
+            deadline = time.monotonic() + 30
+            while not web_ready(url):
+                if process.poll() is not None:
+                    raise RuntimeError(f"OpenCode web exited with code {process.returncode}.")
+                if time.monotonic() >= deadline or stop_event.wait(0.25):
+                    raise RuntimeError("OpenCode web did not become ready.")
+        directory = base64.urlsafe_b64encode(str(config.workspace_dir).encode()).decode().rstrip("=")
+        project_url = f"{url}/{directory}/session"
+        query = urllib.parse.urlencode({"directory": str(config.workspace_dir)})
+        with urllib.request.urlopen(f"{url}/session?{query}", timeout=5) as response:
+            sessions = json.load(response)
+        if not isinstance(sessions, list):
+            raise RuntimeError("OpenCode returned an invalid session list.")
+        existing = [session for session in sessions if isinstance(session, dict)
+                    and session.get("directory") == str(config.workspace_dir)
+                    and isinstance(session.get("id"), str)]
+        if existing:
+            project_url += "/" + urllib.parse.quote(existing[0]["id"], safe="")
+        print(f"OpenCode web: {project_url}", flush=True)
+        if not webbrowser.open(project_url):
+            print(f"Could not open a browser. Open {project_url} manually.", flush=True)
+        return process
+    except (OSError, RuntimeError, webbrowser.Error):
+        stop_web(process)
+        raise
+
+
+def stop_web(process: subprocess.Popen | None) -> None:
+    if process is not None and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -525,7 +594,16 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Runner {config.name}: {config.model}, {config.context:,} context, "
           f"limits {config.max_tokens:,} tokens / {config.max_minutes:g} min, working in {config.workspace_dir}",
           flush=True)
-    work(api, config, stop_event, once=args.once)
+    web = None
+    try:
+        if config.web_enabled:
+            try:
+                web = start_web(config, stop_event)
+            except (OSError, RuntimeError, webbrowser.Error) as error:
+                print(f"Could not start OpenCode web: {error}. Task runner will continue.", flush=True)
+        work(api, config, stop_event, once=args.once)
+    finally:
+        stop_web(web)
 
 
 if __name__ == "__main__":

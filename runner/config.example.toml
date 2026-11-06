@@ -34,6 +34,11 @@ max_minutes = 30
 # How often to check for new tasks when there is nothing to do.
 poll_minutes = 5
 
+# Start the local OpenCode web UI and open the runner workspace in your browser.
+# An existing healthy server is reused; only servers started by the runner are stopped with it.
+web_enabled = true
+web_port = 4096
+
 # Ask the read-only plan agent for a plan first, then carry it out in the same session.
 plan_first = true
 

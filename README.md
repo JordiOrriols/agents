@@ -56,6 +56,12 @@ npm start              # http://localhost:5179
 
 ### What a run does
 
+On startup the runner starts OpenCode's web UI at `http://127.0.0.1:4096` and opens
+the configured workspace in your browser, where its local sessions are visible.
+It reuses an existing healthy server and stops only its own server when exiting.
+Web/browser errors are reported without stopping task processing. Set `web_enabled = false`
+for a headless runner or change `web_port` if necessary. The server binds only to loopback.
+
 1. Claims the oldest pending task. Only one runner can take a task.
 2. Discovers installed Ollama models (`auto_model = true`). When both a general Qwen and a
    coder are installed, a tool-free OpenCode classifier chooses general for research/questions

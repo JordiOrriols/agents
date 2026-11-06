@@ -348,6 +348,46 @@ class WorkTest(RunnerTestCase):
         self.assertIn("Could not check for tasks", output.getvalue())
 
 
+class WebTest(RunnerTestCase):
+    def test_reuses_server_and_opens_existing_workspace_session(self):
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps([
+            {"id": "ses_existing", "directory": str(self.workspace)}
+        ]).encode()
+        with unittest.mock.patch.object(runner, "web_ready", return_value=True), \
+             unittest.mock.patch.object(runner.urllib.request, "urlopen", return_value=response), \
+             unittest.mock.patch.object(runner.webbrowser, "open", return_value=True) as browser, \
+             unittest.mock.patch.object(runner.subprocess, "Popen") as popen:
+            self.assertIsNone(runner.start_web(self.config, threading.Event()))
+            popen.assert_not_called()
+            self.assertTrue(browser.call_args.args[0].endswith("/session/ses_existing"))
+
+    def test_starts_server_in_workspace_and_stops_only_owned_process(self):
+        process = unittest.mock.MagicMock()
+        process.poll.return_value = None
+        response = unittest.mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b"[]"
+        with unittest.mock.patch.object(runner, "web_ready", side_effect=[False, True]), \
+             unittest.mock.patch.object(runner.urllib.request, "urlopen", return_value=response), \
+             unittest.mock.patch.object(runner.webbrowser, "open", return_value=True), \
+             unittest.mock.patch.object(runner.subprocess, "Popen", return_value=process) as popen:
+            self.assertIs(runner.start_web(self.config, threading.Event()), process)
+            self.assertEqual(popen.call_args.kwargs["cwd"], self.workspace)
+            self.assertIn("127.0.0.1", popen.call_args.args[0])
+        runner.stop_web(process)
+        process.terminate.assert_called_once()
+        runner.stop_web(None)
+
+    def test_cleans_up_server_when_readiness_fails(self):
+        process = unittest.mock.MagicMock()
+        process.poll.return_value = None
+        with unittest.mock.patch.object(runner, "web_ready", side_effect=[False, RuntimeError("port conflict")]), \
+             unittest.mock.patch.object(runner.subprocess, "Popen", return_value=process):
+            with self.assertRaisesRegex(RuntimeError, "port conflict"):
+                runner.start_web(self.config, threading.Event())
+        process.terminate.assert_called_once()
+
+
 class SupabaseTest(unittest.TestCase):
     def setUp(self):
         self.requests = []
