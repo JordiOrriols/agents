@@ -16,6 +16,10 @@ import agents_runner as runner  # noqa: E402
 FAKE_OPENCODE = r'''#!/usr/bin/env python3
 import json, os, sys, time
 args = sys.argv[1:]
+if args[0] == "export":
+    print("Exporting session: " + args[1])
+    print(os.environ.get("FAKE_EXPORT", "{}"))
+    sys.exit(0)
 prompt = args[-1]
 agent = args[args.index("--agent") + 1]
 session = args[args.index("--session") + 1] if "--session" in args else "ses_" + agent
@@ -34,6 +38,12 @@ if mode == "tools":
         print(json.dumps({"type": "tool_use", "sessionID": session, "part": {
             "tool": tool, "state": {"status": status, "input": {"password": "private"},
                                    "output": "secret HTML", "error": "private error"}}}))
+if mode == "denied":
+    print(json.dumps({"type": "tool_use", "sessionID": session, "part": {"tool": "bash", "state": {
+        "status": "error", "error": "The user rejected permission to use this specific tool call."}}}))
+    print(json.dumps({"type": "text", "sessionID": session, "part": {"text": "Let me execute."}}))
+    print(json.dumps({"type": "step_finish", "sessionID": session, "part": {"reason": "tool-calls", "tokens": {}}}))
+    sys.exit(0)
 if mode == "event-error":
     print(json.dumps({"type": "error", "error": {"data": {"message": "Model failed"}}}))
 for step in range(steps):
@@ -45,6 +55,42 @@ for step in range(steps):
     if mode == "tokens":
         time.sleep(0.2)
 '''
+
+
+def assistant(text, finish="stop", agent="build", *parts):
+    return {"info": {"role": "assistant", "agent": agent, "finish": finish},
+            "parts": [{"type": "text", "text": text}, *parts]}
+
+
+CONTINUE = {"info": {"role": "user"}, "parts": [{"type": "text", "text": "Continue", "synthetic": True}]}
+ANSWER_THEN_COMPACTION = [
+    {"info": {"role": "user"}, "parts": [{"type": "text", "text": "How many rides?"}]},
+    assistant("There are 40 rides."),
+    {"info": {"role": "user"}, "parts": [{"type": "compaction", "auto": True}]},
+    assistant("## Objective", agent="compaction"),
+    CONTINUE,
+    assistant("Which park do you mean?"),
+]
+
+
+class SettledAnswerTest(unittest.TestCase):
+    def test_returns_the_answer_from_before_the_compaction(self):
+        self.assertEqual(runner.settled_answer(ANSWER_THEN_COMPACTION), "There are 40 rides.")
+
+    def test_ignores_sessions_without_a_compaction(self):
+        self.assertIsNone(runner.settled_answer(ANSWER_THEN_COMPACTION[:2]))
+
+    def test_keeps_the_last_reply_when_the_agent_went_back_to_work(self):
+        worked = assistant("Done after more work.", "stop", "build", {"type": "tool", "tool": "bash"})
+        self.assertIsNone(runner.settled_answer([*ANSWER_THEN_COMPACTION[:5], worked]))
+
+    def test_keeps_the_last_reply_when_the_compaction_interrupted_the_work(self):
+        interrupted = [assistant("Fetching pages.", "tool-calls"), *ANSWER_THEN_COMPACTION[2:]]
+        self.assertIsNone(runner.settled_answer(interrupted))
+
+    def test_keeps_the_reply_to_a_new_request_after_the_compaction(self):
+        question = {"info": {"role": "user"}, "parts": [{"type": "text", "text": "And in Ferrari Land?"}]}
+        self.assertIsNone(runner.settled_answer([*ANSWER_THEN_COMPACTION, question, assistant("16.")]))
 
 
 class FakeApi:
@@ -78,7 +124,7 @@ class RunnerTestCase(unittest.TestCase):
                                     opencode=str(script), max_minutes=1, max_tokens=10_000,
                                     auto_model=False)
         self.env = {"FAKE_LOG": str(self.log)}
-        self.previous = {key: os.environ.get(key) for key in ("FAKE_LOG", "FAKE_MODE")}
+        self.previous = {key: os.environ.get(key) for key in ("FAKE_LOG", "FAKE_MODE", "FAKE_EXPORT")}
         os.environ.update(self.env)
 
     def tearDown(self):
@@ -151,6 +197,24 @@ class OpenCodeTest(RunnerTestCase):
             "limit": {"context": 32768, "output": 8192}}}}})
         self.assertEqual(call["config"]["agent"]["task-review"]["tools"], {"*": False})
         self.assertNotIn("--auto", call["args"])
+
+    def test_keeps_the_answer_a_compaction_replaced(self):
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": ANSWER_THEN_COMPACTION})
+        self.assertEqual(self.run_once().answer, "There are 40 rides.")
+
+    def test_reads_an_export_larger_than_a_pipe_buffer(self):
+        padding = assistant("x" * 200_000, "tool-calls")
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": [padding, *ANSWER_THEN_COMPACTION]})
+        self.assertEqual(self.run_once().answer, "There are 40 rides.")
+
+    def test_keeps_the_streamed_answer_when_the_session_cannot_be_exported(self):
+        os.environ["FAKE_EXPORT"] = "not json"
+        self.assertEqual(self.run_once().answer, "build answer 0")
+
+    def test_reports_a_denied_tool_instead_of_a_half_finished_reply(self):
+        os.environ["FAKE_MODE"] = "denied"
+        result = self.run_once()
+        self.assertEqual(result.failure, "OpenCode denied permission to use bash, so the agent could not finish.")
 
     def test_continues_a_session_and_can_auto_approve(self):
         self.config.auto_approve = True
