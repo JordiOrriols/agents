@@ -20,6 +20,10 @@ workspace_dir = "~/agents-workspace"
 
 # Model, as OpenCode's provider/model, and its context and answer size in tokens.
 model = "ollama/qwen3-coder:30b"
+auto_model = true
+# With both a Qwen general model and a coder installed, classify each task first.
+# Otherwise use the configured model. No models are downloaded automatically.
+ollama_url = "http://localhost:11434"
 context = 32768
 output = 8192
 

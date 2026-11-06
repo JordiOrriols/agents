@@ -29,8 +29,16 @@ if mode == "crash":
     print("model not found")
     sys.exit(2)
 steps = 4 if mode == "tokens" else 1
+if mode == "tools":
+    for tool, status in [("webfetch", "completed"), ("bash", "error")]:
+        print(json.dumps({"type": "tool_use", "sessionID": session, "part": {
+            "tool": tool, "state": {"status": status, "input": {"password": "private"},
+                                   "output": "secret HTML", "error": "private error"}}}))
+if mode == "event-error":
+    print(json.dumps({"type": "error", "error": {"data": {"message": "Model failed"}}}))
 for step in range(steps):
-    print(json.dumps({"type": "text", "sessionID": session, "part": {"text": f"{agent} answer {step}"}}))
+    answer = json.dumps({"status": "completed", "reason": "The requested result is supplied."}) if agent == "task-review" else f"{agent} answer {step}"
+    print(json.dumps({"type": "text", "sessionID": session, "part": {"text": answer}}))
     print(json.dumps({"type": "step_finish", "sessionID": session, "part": {"tokens": {
         "total": 1000 + step, "input": 900, "output": 80, "reasoning": 20, "cache": {"read": 5, "write": 0}}}}))
     sys.stdout.flush()
@@ -67,7 +75,8 @@ class RunnerTestCase(unittest.TestCase):
         script.chmod(0o755)
         self.config = runner.Config(supabase_url="https://x.supabase.co", publishable_key="key", email="a@b.c",
                                     password="pw", workspace_dir=self.workspace, name="test-runner",
-                                    opencode=str(script), max_minutes=1, max_tokens=10_000)
+                                    opencode=str(script), max_minutes=1, max_tokens=10_000,
+                                    auto_model=False)
         self.env = {"FAKE_LOG": str(self.log)}
         self.previous = {key: os.environ.get(key) for key in ("FAKE_LOG", "FAKE_MODE")}
         os.environ.update(self.env)
@@ -138,8 +147,9 @@ class OpenCodeTest(RunnerTestCase):
         call = self.calls()[0]
         self.assertEqual(call["pwd"], str(self.workspace))
         self.assertEqual(os.path.realpath(call["cwd"]), os.path.realpath(self.workspace))
-        self.assertEqual(call["config"], {"provider": {"ollama": {"models": {"qwen3-coder:30b": {
-            "limit": {"context": 32768, "output": 8192}}}}}})
+        self.assertEqual(call["config"]["provider"], {"ollama": {"models": {"qwen3-coder:30b": {
+            "limit": {"context": 32768, "output": 8192}}}}})
+        self.assertEqual(call["config"]["agent"]["task-review"]["tools"], {"*": False})
         self.assertNotIn("--auto", call["args"])
 
     def test_continues_a_session_and_can_auto_approve(self):
@@ -174,6 +184,19 @@ class OpenCodeTest(RunnerTestCase):
         self.assertIn("exited with code 2", result.failure)
         self.assertIn("model not found", result.failure)
 
+    def test_records_only_tool_names_and_states(self):
+        os.environ["FAKE_MODE"] = "tools"
+        result = self.run_once()
+        self.assertEqual(result.activity, ["webfetch: completed", "bash: error"])
+        self.assertNotIn("private", json.dumps(result.activity))
+        self.assertNotIn("HTML", json.dumps(result.activity))
+
+    def test_error_event_cannot_be_success_even_with_text_and_zero_exit(self):
+        os.environ["FAKE_MODE"] = "event-error"
+        result = self.run_once()
+        self.assertEqual(result.exit, 0)
+        self.assertEqual(result.failure, "OpenCode error: Model failed")
+
 
 class ProcessTaskTest(RunnerTestCase):
     task = {"id": "t1", "title": "Fix the bug", "instructions": "The login fails.", "session_id": None}
@@ -184,7 +207,7 @@ class ProcessTaskTest(RunnerTestCase):
     def test_plans_then_carries_out_the_task_in_the_same_session(self):
         api = FakeApi(messages=[{"role": "user", "body": "Use the staging data"}])
         self.assertEqual(runner.process_task(api, self.config, self.task), "completed")
-        plan, execute = self.calls()
+        plan, execute, review = self.calls()
         self.assertEqual(plan["args"][plan["args"].index("--agent") + 1], "plan")
         self.assertIn("The login fails.", plan["args"][-1])
         self.assertIn("- Use the staging data", plan["args"][-1])
@@ -194,16 +217,16 @@ class ProcessTaskTest(RunnerTestCase):
         self.assertTrue(report["succeeded"])
         self.assertEqual(report["run_plan"], "plan answer 0")
         self.assertEqual(report["run_outcome"], "build answer 0")
-        self.assertEqual((report["run_tokens_generated"], report["run_tokens_total"]), (200, 2000))
+        self.assertEqual((report["run_tokens_generated"], report["run_tokens_total"]), (300, 3000))
         self.assertEqual(report["run_session"], "ses_plan")
-        self.assertIsNone(report["reply"])
+        self.assertEqual(json.loads(report["reply"])["answer"], "build answer 0")
         self.assertIsNone(report["failure"])
 
     def test_can_skip_planning(self):
         self.config.plan_first = False
         api = FakeApi()
         runner.process_task(api, self.config, self.task)
-        (call,) = self.calls()
+        call, review = self.calls()
         self.assertNotIn("--session", call["args"])
         self.assertIn("Carry out the task.", call["args"][-1])
         self.assertIsNone(self.finish(api)["run_plan"])
@@ -212,11 +235,11 @@ class ProcessTaskTest(RunnerTestCase):
         api = FakeApi(messages=[{"role": "user", "body": "old"}, {"role": "agent", "body": "done"},
                                 {"role": "user", "body": "Why?"}, {"role": "user", "body": "And tests?"}])
         runner.process_task(api, self.config, {**self.task, "session_id": "ses_7"})
-        (call,) = self.calls()
-        self.assertEqual(call["args"][-1], "Why?\n\nAnd tests?")
+        call, review = self.calls()
+        self.assertIn("- Why?\n- And tests?", call["args"][-1])
         self.assertEqual(call["args"][call["args"].index("--session") + 1], "ses_7")
         report = self.finish(api)
-        self.assertEqual(report["reply"], "build answer 0")
+        self.assertEqual(json.loads(report["reply"])["answer"], "build answer 0")
         self.assertIsNone(report["run_outcome"])
 
     def test_fails_without_carrying_out_a_failed_plan(self):
@@ -233,10 +256,70 @@ class ProcessTaskTest(RunnerTestCase):
 
         def fake(config, prompt, **options):
             budgets.append((options["token_budget"], options["seconds_budget"]))
-            return runner.Run(answer="ok", session="s", tokens_total=4000, seconds=20)
+            return runner.Run(answer='{"status":"completed","reason":"ok"}', session="s",
+                              tokens_total=4000, seconds=20)
 
         runner.process_task(FakeApi(), self.config, self.task, runner=fake)
-        self.assertEqual(budgets, [(10_000, 60), (6000, 40)])
+        self.assertEqual(budgets, [(10_000, 60), (6000, 40), (2000, 20)])
+
+    def test_rejects_an_unrelated_sitemap_and_keeps_history(self):
+        def fake(config, prompt, **options):
+            answer = ('{"status":"failed","reason":"A sitemap does not answer live availability."}'
+                      if options["agent"] == "task-review" else "Tickets, hotels, parks")
+            return runner.Run(answer=answer, session="s", activity=["webfetch: completed"])
+
+        api = FakeApi()
+        self.assertEqual(runner.process_task(api, self.config, self.task, runner=fake), "failed")
+        report = self.finish(api)
+        self.assertIn("sitemap", report["failure"])
+        history = json.loads(report["reply"])
+        self.assertEqual(history["phases"][1]["tools"], ["webfetch: completed"])
+        self.assertEqual(history["answer"], "Tickets, hotels, parks")
+
+    def test_rejects_invalid_or_missing_review(self):
+        for answer in ("ok", '{"status":"completed"}', '{"status":"completed","reason":""}'):
+            self.assertIsNotNone(runner.review_failure(answer))
+
+    def test_does_not_launch_more_work_after_budget_is_exhausted(self):
+        calls = []
+        def fake(config, prompt, **options):
+            calls.append(options)
+            return runner.Run(answer="plan", session="s", tokens_total=10_000)
+        api = FakeApi()
+        self.assertEqual(runner.process_task(api, self.config, self.task, runner=fake), "failed")
+        self.assertEqual(len(calls), 1)
+
+    def test_routes_research_to_general_and_code_to_coder(self):
+        self.config.auto_model = True
+        installed = ["ollama/qwen3.6:35b", "ollama/qwen3-coder:30b"]
+        for category, selected in (("general", installed[0]), ("coding", installed[1])):
+            calls = []
+            def fake(config, prompt, **options):
+                calls.append((config.model, options["agent"]))
+                answer = (json.dumps({"category": category, "reason": "Chosen for this task"})
+                          if options["agent"] == "task-router"
+                          else '{"status":"completed","reason":"The task is answered."}')
+                return runner.Run(answer=answer, session="s")
+            api = FakeApi()
+            self.assertEqual(runner.process_task(api, self.config, self.task, runner=fake,
+                                                models=lambda _: installed), "completed")
+            self.assertEqual(calls[1], (selected, "plan"))
+            self.assertEqual(self.finish(api)["run_model"], selected)
+            self.assertEqual(self.config.model, "ollama/qwen3-coder:30b")
+
+    def test_fails_explicitly_if_discovery_or_routing_fails(self):
+        self.config.auto_model = True
+        api = FakeApi()
+        self.assertEqual(runner.process_task(api, self.config, self.task,
+                                            models=lambda _: []), "failed")
+        self.assertIn("not installed", self.finish(api)["failure"])
+
+    def test_single_model_skips_classifier(self):
+        self.config.auto_model = True
+        api = FakeApi()
+        runner.process_task(api, self.config, self.task,
+                            models=lambda _: ["ollama/qwen3-coder:30b"])
+        self.assertEqual(len(self.calls()), 3)
 
 
 class WorkTest(RunnerTestCase):
