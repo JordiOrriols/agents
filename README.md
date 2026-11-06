@@ -81,7 +81,11 @@ for a headless runner or change `web_port` if necessary. The server binds only t
 
 The task conversation saves a bounded **Run history** after each attempt: selected model and
 selection reason, phase durations/token counts, tool names and completion/error states, final
-answer and review. It does not upload tool arguments, tool output, files or private reasoning.
+answer and review, plus counters for comparing runs, models and computers later: steps,
+compactions, tokens read and cached, largest context, model and tool time, failed, truncated and
+repeated tool calls, subagents, how the run ended and the computer. They are stored in the run
+message, also for failed runs, and can be queried with `body::jsonb -> 'stats'`.
+It does not upload tool arguments, tool output, files or private reasoning.
 It is not a live tool stream and existing runs are not imported retroactively. The full local
 conversation remains available with `opencode session list` and `opencode export <session-id>`;
 exports can contain sensitive file/tool data, so review them before sharing.

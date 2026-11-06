@@ -93,6 +93,37 @@ function AgentMessage({ body }: { body: string }) {
               </li>
             ))}
           </ol>
+          {run.stats && (
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="run-stats">
+              <Stat
+                label={t("tasks.detail.stats.compactions")}
+                value={String(run.stats.compactions)}
+              />
+              <Stat label={t("tasks.detail.stats.steps")} value={String(run.stats.steps)} />
+              <Stat
+                label={t("tasks.detail.stats.modelTime")}
+                value={formatDuration(run.stats.model_seconds)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.tokensRead")}
+                value={formatTokens(run.stats.tokens_read, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.tokensCached")}
+                value={formatTokens(run.stats.tokens_cached, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.largestContext")}
+                value={formatTokens(run.stats.largest_context, i18n.language)}
+              />
+              <Stat
+                label={t("tasks.detail.stats.toolErrors")}
+                value={`${run.stats.tool_errors} / ${run.stats.tool_calls}`}
+              />
+              <Stat label={t("tasks.detail.stats.subagents")} value={String(run.stats.subagents)} />
+              <Stat label={t("tasks.detail.stats.machine")} value={run.stats.machine} />
+            </dl>
+          )}
           {run.verification && <p>{run.verification}</p>}
           {run.failure && <ErrorState message={run.failure} />}
         </div>

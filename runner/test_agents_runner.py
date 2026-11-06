@@ -93,6 +93,57 @@ class SettledAnswerTest(unittest.TestCase):
         self.assertIsNone(runner.settled_answer([*ANSWER_THEN_COMPACTION, question, assistant("16.")]))
 
 
+def timed(message, created, completed):
+    message["info"]["time"] = {"created": created, "completed": completed}
+    return message
+
+
+def tool(name, status="completed", start=0, end=0, **state):
+    return {"type": "tool", "tool": name, "state": {"status": status, "time": {"start": start, "end": end}, **state}}
+
+
+class SessionStatsTest(unittest.TestCase):
+    config = None
+
+    def stats(self, sessions, since=0):
+        with unittest.mock.patch.object(runner, "export_session", lambda _, session: sessions.get(session, [])):
+            return runner.session_stats(self.config, "main", since)
+
+    def test_counts_a_run_with_its_subagents_and_no_content(self):
+        page = {"input": {"url": "https://secret.example/private"}, "metadata": {"truncated": True}}
+        first = assistant("private answer", "tool-calls", "build",
+                          tool("webfetch", start=1_000, end=3_000, **page),
+                          tool("webfetch", start=3_000, end=4_000, **page),
+                          tool("webfetch", "error", error="StatusCode: non 2xx status code (404 GET https://x)"),
+                          tool("webfetch", "error", error="StatusCode: non 2xx status code (403 GET https://y)"),
+                          tool("task", start=4_000, end=9_000, metadata={"sessionId": "child"}))
+        first["info"]["tokens"] = {"total": 500, "input": 300, "output": 40, "reasoning": 10, "cache": {"read": 150}}
+        compaction = assistant("summary", agent="compaction")
+        compaction["info"]["tokens"] = {"total": 100, "input": 80, "output": 20, "cache": {"read": 0}}
+        child = assistant("child notes", "stop", "explore")
+        child["info"]["tokens"] = {"total": 900, "input": 700, "output": 5, "cache": {"read": 0}}
+        stats = self.stats({"main": [timed(first, 1_000, 21_000), timed(compaction, 22_000, 25_000),
+                                     timed(assistant("done"), 26_000, 28_000)],
+                            "child": [timed(child, 4_000, 9_000)]})
+        self.assertEqual(stats, {
+            "steps": 3, "compactions": 1, "compaction_seconds": 3, "model_seconds": 19, "tool_seconds": 3,
+            "tokens_read": 1080, "tokens_cached": 150, "tokens_generated": 75, "largest_context": 900,
+            "tool_calls": 5, "tool_errors": 2, "pages_not_found": 1, "pages_forbidden": 1,
+            "truncated_outputs": 2, "repeated_fetches": 1, "subagents": 1, "ended": "stop"})
+        self.assertNotIn("secret", json.dumps(stats))
+        self.assertNotIn("private", json.dumps(stats))
+
+    def test_counts_only_this_run_of_a_continued_session(self):
+        old, new = timed(assistant("old"), 1_000, 2_000), timed(assistant("new"), 5_000, 6_000)
+        self.assertEqual(self.stats({"main": [old, new]}, since=4_000)["steps"], 1)
+
+    def test_marks_a_run_that_was_cut_off(self):
+        self.assertEqual(self.stats({"main": [timed(assistant("working", None), 1_000, 0)]})["ended"], "interrupted")
+
+    def test_has_nothing_to_report_without_a_session(self):
+        self.assertIsNone(self.stats({}))
+
+
 class FakeApi:
     def __init__(self, messages=None, tasks=None):
         self.calls = []
@@ -210,6 +261,10 @@ class OpenCodeTest(RunnerTestCase):
     def test_keeps_the_streamed_answer_when_the_session_cannot_be_exported(self):
         os.environ["FAKE_EXPORT"] = "not json"
         self.assertEqual(self.run_once().answer, "build answer 0")
+
+    def test_marks_an_answer_it_had_to_recover(self):
+        os.environ["FAKE_EXPORT"] = json.dumps({"messages": ANSWER_THEN_COMPACTION})
+        self.assertTrue(self.run_once().recovered)
 
     def test_reports_a_denied_tool_instead_of_a_half_finished_reply(self):
         os.environ["FAKE_MODE"] = "denied"
@@ -339,6 +394,19 @@ class ProcessTaskTest(RunnerTestCase):
         history = json.loads(report["reply"])
         self.assertEqual(history["phases"][1]["tools"], ["webfetch: completed"])
         self.assertEqual(history["answer"], "Tickets, hotels, parks")
+        self.assertNotIn("stats", history)
+
+    def test_keeps_the_counters_of_a_failed_run(self):
+        def fake(config, prompt, **options):
+            return runner.Run(session="s", stopped="time limit (30 min)", recovered=True)
+
+        api = FakeApi()
+        with unittest.mock.patch.object(runner, "session_stats", return_value={"compactions": 4}) as stats, \
+                unittest.mock.patch.object(runner, "machine_name", return_value="Test Mac, 64 GB"):
+            self.assertEqual(runner.process_task(api, self.config, self.task, runner=fake), "failed")
+        self.assertEqual(stats.call_args.args[1], "s")
+        self.assertEqual(json.loads(self.finish(api)["reply"])["stats"], {
+            "compactions": 4, "answer_recovered": True, "machine": "Test Mac, 64 GB", "context_limit": 32768})
 
     def test_rejects_invalid_or_missing_review(self):
         for answer in ("ok", '{"status":"completed"}', '{"status":"completed","reason":""}'):

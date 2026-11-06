@@ -118,7 +118,18 @@
       "delete": "Eliminar",
       "cancel": "Cancelar",
       "deleteTitle": "¿Eliminar esta tarea?",
-      "deleteDescription": "Se eliminarán «{{title}}», su resultado y su chat."
+      "deleteDescription": "Se eliminarán «{{title}}», su resultado y su chat.",
+      "stats": {
+        "compactions": "Compactaciones",
+        "steps": "Pasos",
+        "modelTime": "Tiempo del modelo",
+        "tokensRead": "Tokens leídos",
+        "tokensCached": "Tokens de caché",
+        "largestContext": "Contexto máximo",
+        "toolErrors": "Herramientas fallidas",
+        "subagents": "Subagentes",
+        "machine": "Equipo"
+      }
     }
   },
   "runner": {

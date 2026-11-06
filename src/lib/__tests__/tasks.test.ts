@@ -21,16 +21,44 @@ describe("parseRunMessage", () => {
     verification: "No verified current source",
     failure: "Objective not achieved",
   };
+  const stats = {
+    steps: 12,
+    compactions: 2,
+    compaction_seconds: 90,
+    model_seconds: 600,
+    tool_seconds: 30,
+    tokens_read: 40000,
+    tokens_cached: 10000,
+    tokens_generated: 2000,
+    largest_context: 45000,
+    context_limit: 65536,
+    tool_calls: 9,
+    tool_errors: 3,
+    pages_not_found: 2,
+    pages_forbidden: 1,
+    truncated_outputs: 4,
+    repeated_fetches: 1,
+    subagents: 1,
+    ended: "stop",
+    machine: "Apple M1 Max, 64 GB",
+    answer_recovered: false,
+  };
   it("preserves legacy chat and parses structured run summaries", () => {
     expect(parseRunMessage("A normal reply")).toBeNull();
     expect(parseRunMessage('{"unrelated":true}')).toBeNull();
     expect(parseRunMessage(JSON.stringify(run))).toEqual(run);
+  });
+  it("keeps the counters of a run", () => {
+    const withStats = { ...run, stats };
+    expect(parseRunMessage(JSON.stringify(withStats))).toEqual(withStats);
   });
   it("rejects malformed structured histories", () => {
     for (const overrides of [
       { version: 2 },
       { answer: 1 },
       { failure: false },
+      { stats: { ...stats, compactions: "many" } },
+      { stats: { ...stats, machine: undefined } },
       { phases: [{ name: "unknown", seconds: 0, tokens: 0, tools: [] }] },
       { phases: [{ name: "work", seconds: -1, tokens: 0, tools: [] }] },
       { phases: [{ name: "work", seconds: 1, tokens: 0, tools: ["private tool output"] }] },

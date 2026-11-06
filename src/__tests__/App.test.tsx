@@ -353,6 +353,28 @@ describe("Agents", () => {
           verification: "A sitemap is not an answer.",
           failure: "Objective not achieved",
           phases: [{ name: "work", seconds: 5, tokens: 100, tools: ["webfetch: completed"] }],
+          stats: {
+            steps: 12,
+            compactions: 3,
+            compaction_seconds: 90,
+            model_seconds: 600,
+            tool_seconds: 30,
+            tokens_read: 40000,
+            tokens_cached: 10000,
+            tokens_generated: 2000,
+            largest_context: 45000,
+            context_limit: 65536,
+            tool_calls: 9,
+            tool_errors: 4,
+            pages_not_found: 2,
+            pages_forbidden: 1,
+            truncated_outputs: 4,
+            repeated_fetches: 1,
+            subagents: 1,
+            ended: "stop",
+            machine: "Apple M1 Max, 64 GB",
+            answer_recovered: false,
+          },
         }),
       },
     ];
@@ -360,6 +382,9 @@ describe("Agents", () => {
     expect(await screen.findByText("Live availability could not be verified.")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Run history"));
     expect(screen.getByTestId("agent-run-history")).toHaveTextContent("webfetch");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Compactions3");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Failed tools4 / 9");
+    expect(screen.getByTestId("run-stats")).toHaveTextContent("Apple M1 Max, 64 GB");
     expect(screen.getByText("A sitemap is not an answer.")).toBeVisible();
     expect(screen.getByRole("alert")).toHaveTextContent("Objective not achieved");
   });

@@ -16,6 +16,7 @@ import dataclasses
 import datetime
 import json
 import os
+import platform
 import re
 import signal
 import socket
@@ -184,6 +185,7 @@ class Run:
     activity: list[str] = dataclasses.field(default_factory=list)
     denied: list[str] = dataclasses.field(default_factory=list)
     finish: str | None = None
+    recovered: bool = False
 
     @property
     def failure(self) -> str | None:
@@ -251,6 +253,78 @@ def export_session(config: Config, session: str) -> list[dict[str, Any]]:
         return []
     messages = data.get("messages") if isinstance(data, dict) else None
     return [message for message in messages if isinstance(message, dict)] if isinstance(messages, list) else []
+
+
+def machine_name() -> str:
+    """The hardware of a run, so the same task can be compared between computers."""
+    try:
+        chip, memory = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string", "hw.memsize"], text=True,
+                                      capture_output=True, timeout=5, check=True).stdout.splitlines()[:2]
+        return f"{chip}, {int(memory) // 2**30} GB"
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return platform.machine()
+
+
+def session_stats(config: Config, session: str, since_ms: int) -> dict[str, Any] | None:
+    """Counters of one run for later analysis, subagents included. Only numbers leave this
+    function: never prompts, answers, tool inputs or outputs."""
+    def load(session_id: str) -> list[dict[str, Any]]:
+        return [message for message in export_session(config, session_id)
+                if (message.get("info", {}).get("time") or {}).get("created", 0) >= since_ms]
+
+    own = load(session)
+    if not own:
+        return None
+    subagents = {((part.get("state") or {}).get("metadata") or {}).get("sessionId")
+                 for message in own for part in message.get("parts", []) if part.get("tool") == "task"} - {None}
+    stats = dict.fromkeys(("steps", "compactions", "compaction_seconds", "model_seconds", "tool_seconds",
+                           "tokens_read", "tokens_cached", "tokens_generated", "largest_context",
+                           "tool_calls", "tool_errors", "pages_not_found", "pages_forbidden",
+                           "truncated_outputs", "repeated_fetches"), 0)
+    fetched: set[str] = set()
+    step_ms = busy_ms = tool_ms = compaction_ms = 0
+    for message in own + [message for child in sorted(subagents) for message in load(child)]:
+        info = message.get("info", {})
+        if info.get("role") == "assistant":
+            times, tokens = info.get("time") or {}, info.get("tokens") or {}
+            spent = max(times.get("completed", 0) - times.get("created", 0), 0) if times.get("completed") else 0
+            if info.get("agent") == "compaction":
+                stats["compactions"] += 1
+                compaction_ms += spent
+            else:
+                stats["steps"] += 1
+                step_ms += spent
+            stats["tokens_read"] += tokens.get("input", 0)
+            stats["tokens_cached"] += (tokens.get("cache") or {}).get("read", 0)
+            stats["tokens_generated"] += tokens.get("output", 0) + tokens.get("reasoning", 0)
+            stats["largest_context"] = max(stats["largest_context"], tokens.get("total") or 0)
+        for part in message.get("parts", []):
+            if part.get("type") != "tool":
+                continue
+            state = part.get("state") or {}
+            times, error = state.get("time") or {}, str(state.get("error", ""))
+            spent = max(times.get("end", 0) - times.get("start", 0), 0) if times.get("end") else 0
+            busy_ms += spent
+            stats["tool_calls"] += 1
+            if part.get("tool") != "task":
+                tool_ms += spent
+            stats["tool_errors"] += state.get("status") == "error"
+            stats["pages_not_found"] += "(404 " in error
+            stats["pages_forbidden"] += "(403 " in error
+            stats["truncated_outputs"] += (state.get("metadata") or {}).get("truncated") is True
+            url = (state.get("input") or {}).get("url")
+            if part.get("tool") == "webfetch" and state.get("status") == "completed":
+                stats["repeated_fetches"] += url in fetched
+                fetched.add(url)
+    # A step's time includes the tools it waited for, subagents among them.
+    stats["model_seconds"] = round(max(step_ms - busy_ms, 0) / 1000)
+    stats["tool_seconds"] = round(tool_ms / 1000)
+    stats["compaction_seconds"] = round(compaction_ms / 1000)
+    stats["subagents"] = len(subagents)
+    ended = next((message["info"].get("finish") for message in reversed(own)
+                  if message.get("info", {}).get("role") == "assistant"
+                  and message["info"].get("agent") != "compaction"), None)
+    return {**stats, "ended": ended or "interrupted"}
 
 
 def run_opencode(config: Config, prompt: str, *, title: str, agent: str, session: str | None,
@@ -338,7 +412,9 @@ def run_opencode(config: Config, prompt: str, *, title: str, agent: str, session
     # Earlier text parts are commentary between tool calls; the last one is the answer.
     result.answer = next((text.strip() for text in reversed(texts) if text.strip()), "")
     if result.session and not result.stopped and not result.exit:
-        result.answer = settled_answer(export_session(config, result.session)) or result.answer
+        settled = settled_answer(export_session(config, result.session))
+        result.recovered = bool(settled) and settled != result.answer
+        result.answer = settled or result.answer
     return result
 
 
@@ -411,6 +487,7 @@ def process_task(api: Supabase, config: Config, task: dict[str, Any],
                  stop_event: threading.Event | None = None, runner: Callable[..., Run] = run_opencode,
                  models: Callable[[Config], list[str]] = available_models) -> str:
     """Runs one claimed task and reports it. Returns the status it finished with."""
+    started_ms = int(time.time() * 1000)
     messages = api.messages(task["id"])
     questions = unanswered(messages)
     tokens_left, seconds_left = config.max_tokens, config.max_minutes * 60
@@ -523,11 +600,16 @@ def process_task(api: Supabase, config: Config, task: dict[str, Any],
                 verification = ""
     # Only a bounded activity summary is shared; never tool inputs, outputs, files or reasoning.
     reply = report["reply"] or report["run_outcome"] or report["run_plan"] or ""
+    stats = session_stats(config, session, started_ms) if session else None
+    if stats:
+        stats |= {"answer_recovered": any(run.recovered for run in runs), "machine": machine_name(),
+                  "context_limit": config.context}
     report["reply"] = json.dumps({
         "kind": "agents-run", "version": 1, "model": config.model, "selection": selection,
         "phases": [{"name": phase, "tokens": run.tokens_total, "seconds": round(run.seconds),
                     "tools": run.activity} for phase, run in zip(phases, runs)],
         "answer": reply[:20000], "verification": verification, "failure": failure,
+        **({"stats": stats} if stats else {}),
     }, ensure_ascii=False)
     api.rpc("agents_finish_task", {
         "task": task["id"], "runner_name": config.name, "succeeded": failure is None,

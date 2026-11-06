@@ -118,7 +118,18 @@
       "delete": "Elimina",
       "cancel": "Annulla",
       "deleteTitle": "Eliminare questa attività?",
-      "deleteDescription": "«{{title}}», il suo risultato e la chat verranno eliminati."
+      "deleteDescription": "«{{title}}», il suo risultato e la chat verranno eliminati.",
+      "stats": {
+        "compactions": "Compattazioni",
+        "steps": "Passaggi",
+        "modelTime": "Tempo del modello",
+        "tokensRead": "Token letti",
+        "tokensCached": "Token in cache",
+        "largestContext": "Contesto massimo",
+        "toolErrors": "Strumenti non riusciti",
+        "subagents": "Sottoagenti",
+        "machine": "Computer"
+      }
     }
   },
   "runner": {
