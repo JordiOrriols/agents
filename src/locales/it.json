@@ -100,6 +100,13 @@
       "plan": "Piano",
       "outcome": "Risultato",
       "chat": "Chat",
+      "history": "Cronologia di esecuzione",
+      "phases": {
+        "routing": "Selezione del modello",
+        "plan": "Pianificazione",
+        "work": "Esecuzione",
+        "review": "Verifica del risultato"
+      },
       "chatPlaceholder": "Fai una domanda o chiedi una modifica",
       "chatHint": "L'agente risponde nella stessa sessione al prossimo controllo.",
       "chatBusy": "Potrai scrivere quando l'agente avrà finito.",

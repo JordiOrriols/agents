@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, ConfirmDialog, ErrorState, Modal, Textarea, cn } from "@jordiorriols/ui";
 import { RotateCcw, Trash2 } from "@jordiorriols/ui/icons";
 import { useTaskActions, useTaskMessages } from "@/hooks/useTasks";
-import { formatDuration, formatTokens, type AgentTask } from "@/lib/tasks";
+import { formatDuration, formatTokens, parseRunMessage, type AgentTask } from "@/lib/tasks";
 import { StatusMark } from "./StatusMark";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -37,9 +37,61 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function AgentMessage({ body }: { body: string }) {
+  const { t, i18n } = useTranslation();
+  let run;
+  try {
+    run = parseRunMessage(body);
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+    return <ErrorState message={t("errors.unexpectedResponse")} />;
+  }
+  if (!run) return <>{body}</>;
+  return (
+    <div className="space-y-3" data-testid="agent-run-history">
+      <p>{run.answer}</p>
+      <details>
+        <summary className="cursor-pointer font-medium">{t("tasks.detail.history")}</summary>
+        <div className="mt-2 space-y-2">
+          <p>{run.model}</p>
+          {run.selection && <p>{run.selection}</p>}
+          <ol className="space-y-2">
+            {run.phases.map((phase, index) => (
+              <li key={index}>
+                <p>
+                  {t(`tasks.detail.phases.${phase.name}`)} ·{" "}
+                  {t("tasks.meta.finished", {
+                    duration: formatDuration(phase.seconds),
+                    tokens: formatTokens(phase.tokens, i18n.language),
+                  })}
+                </p>
+                {phase.tools.length > 0 && (
+                  <ul className="pl-3">
+                    {phase.tools.map((tool, toolIndex) => {
+                      const [name, status] = tool.split(": ");
+                      return (
+                        <li key={toolIndex}>
+                          {name} ·{" "}
+                          {t(`tasks.status.${status === "error" ? "failed" : "completed"}`)}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ol>
+          {run.verification && <p>{run.verification}</p>}
+          {run.failure && <ErrorState message={run.failure} />}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 function Chat({ task, canEdit }: { task: AgentTask; canEdit: boolean }) {
   const { t } = useTranslation();
-  const { data: messages = [] } = useTaskMessages(task);
+  const { data: messages = [], error } = useTaskMessages(task);
   const { send } = useTaskActions(task.workspaceId);
   const [message, setMessage] = useState("");
   const running = task.status === "running";
@@ -54,6 +106,7 @@ function Chat({ task, canEdit }: { task: AgentTask; canEdit: boolean }) {
 
   return (
     <Section title={t("tasks.detail.chat")}>
+      {error && <ErrorState message={error.message} />}
       {messages.length > 0 && (
         <ol className="space-y-2" data-testid="task-chat">
           {messages.map((item) => (
@@ -66,7 +119,7 @@ function Chat({ task, canEdit }: { task: AgentTask; canEdit: boolean }) {
               )}
             >
               <span className="sr-only">{t(`tasks.detail.roles.${item.role}`)}</span>
-              {item.body}
+              {item.role === "agent" ? <AgentMessage body={item.body} /> : item.body}
             </li>
           ))}
         </ol>

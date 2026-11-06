@@ -56,12 +56,33 @@ npm start              # http://localhost:5179
 
 ### What a run does
 
+On startup the runner starts OpenCode's web UI at `http://127.0.0.1:4096` and opens
+the configured workspace in your browser, where its local sessions are visible.
+It reuses an existing healthy server and stops only its own server when exiting.
+Web/browser errors are reported without stopping task processing. Set `web_enabled = false`
+for a headless runner or change `web_port` if necessary. The server binds only to loopback.
+
 1. Claims the oldest pending task. Only one runner can take a task.
-2. Asks OpenCode's read-only `plan` agent for a plan (`plan_first = true`).
-3. Continues the same session with the `build` agent to carry the plan out, and saves its
-   last answer as the outcome.
-4. Reports the time, the tokens and the result. The task fails when OpenCode exits with an
-   error, gives no answer, or reaches `max_tokens` or `max_minutes`.
+2. Discovers installed Ollama models (`auto_model = true`). When both a general Qwen and a
+   coder are installed, a tool-free OpenCode classifier chooses general for research/questions
+   or coder for code changes. It does not download models. With only one suitable model, it uses
+   the configured model; discovery or classification errors fail explicitly.
+3. Asks OpenCode's read-only `plan` agent for a plan and acceptance criteria (`plan_first = true`).
+4. Continues the same session with the `build` agent, repeating the original objective,
+   current local date/time and evidence requirements to prevent context drift.
+5. A separate, tool-free OpenCode session checks whether the answer addresses the request.
+   Unrelated results, unverifiable claims, malformed verdicts and exhausted budgets fail rather
+   than being treated as completed. This model review checks relevance, not independent factual
+   truth: a model can still make mistakes.
+6. Reports the time, tokens and result, including routing and review costs. The task also fails
+   when OpenCode exits with an error, gives no answer, or reaches `max_tokens` or `max_minutes`.
+
+The task conversation saves a bounded **Run history** after each attempt: selected model and
+selection reason, phase durations/token counts, tool names and completion/error states, final
+answer and review. It does not upload tool arguments, tool output, files or private reasoning.
+It is not a live tool stream and existing runs are not imported retroactively. The full local
+conversation remains available with `opencode session list` and `opencode export <session-id>`;
+exports can contain sensitive file/tool data, so review them before sharing.
 
 A chat message on a finished task puts it back in the queue. The runner then answers in the
 same OpenCode session instead of starting again. **Run again** starts the task from scratch;
@@ -69,21 +90,27 @@ the time and tokens keep adding up across runs.
 
 ### Settings
 
-| Setting        | Default                  | Meaning                                       |
-| -------------- | ------------------------ | --------------------------------------------- |
-| `model`        | `ollama/qwen3-coder:30b` | OpenCode `provider/model`                     |
-| `context`      | `32768`                  | Context window given to OpenCode (e.g. 65536) |
-| `output`       | `8192`                   | Largest answer in tokens                      |
-| `max_tokens`   | `150000`                 | Input + output tokens per run                 |
-| `max_minutes`  | `30`                     | Time per run                                  |
-| `poll_minutes` | `5`                      | Wait between checks when the list is empty    |
-| `plan_first`   | `true`                   | Plan with the read-only agent before working  |
-| `auto_approve` | `false`                  | Pass `--auto` to OpenCode (disposable folders) |
-| `workspace_id` | all                      | Only take tasks from one workspace            |
-| `name`         | computer name            | Runner name shown in the app                  |
+| Setting        | Default                  | Meaning                                              |
+| -------------- | ------------------------ | ---------------------------------------------------- |
+| `model`        | `ollama/qwen3-coder:30b` | OpenCode `provider/model`                            |
+| `auto_model`   | `true`                   | Choose between installed Qwen general/coder per task |
+| `ollama_url`   | `http://localhost:11434` | Local Ollama endpoint for model discovery            |
+| `context`      | `32768`                  | Context window given to OpenCode (e.g. 65536)        |
+| `output`       | `8192`                   | Largest answer in tokens                             |
+| `max_tokens`   | `500000`                 | Input + output tokens per run                        |
+| `max_minutes`  | `30`                     | Time per run                                         |
+| `poll_minutes` | `5`                      | Wait between checks when the list is empty           |
+| `plan_first`   | `true`                   | Plan with the read-only agent before working         |
+| `auto_approve` | `false`                  | Pass `--auto` to OpenCode (disposable folders)       |
+| `workspace_id` | all                      | Only take tasks from one workspace                   |
+| `name`         | computer name            | Runner name shown in the app                         |
 
 Make sure Ollama serves the model with at least the same context, for example
 `OLLAMA_CONTEXT_LENGTH=32768 ollama serve`.
+
+The 500,000-token budget counts input again on every model step, not just generated text.
+Together with the 30-minute limit it is a safety ceiling, not a target duration.
+Restart the runner after changing its configuration; settings are loaded at startup.
 
 ### Keep it running on macOS
 
@@ -121,6 +148,16 @@ npm run compile && npm run lint && npm run format:check
 npm run test:coverage
 npm run test:runner
 ```
+
+The isolated browser tests live in the sibling `e2e-tests` repository:
+
+```sh
+cd ../e2e-tests
+npx playwright test --config agents.config.ts
+```
+
+They start Agents on port 5189 with mocked Supabase responses (no real workspace writes),
+checking conversation history, mobile layout and refresh after the runner finishes.
 
 ## Database
 

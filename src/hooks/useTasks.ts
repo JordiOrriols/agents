@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useData } from "@/data/DataProvider";
 import type { AgentTask } from "@/lib/tasks";
 
@@ -27,11 +28,19 @@ export function useTasks(workspaceId: string | null) {
 
 export function useTaskMessages(task: AgentTask | null) {
   const { taskApi } = useData();
+  const client = useQueryClient();
+  const id = task?.id;
+  const status = task?.status;
+  useEffect(() => {
+    if (id && (status === "completed" || status === "failed"))
+      void client.invalidateQueries({ queryKey: taskKeys.messages(id) });
+  }, [client, id, status]);
   return useQuery({
     queryKey: taskKeys.messages(task?.id ?? null),
     queryFn: () => taskApi!.listMessages(task!.id),
     enabled: !!taskApi && !!task,
-    refetchInterval: task && task.status !== "completed" ? ACTIVE_POLL_MS : false,
+    refetchInterval:
+      task && (task.status === "running" || task.status === "pending") ? ACTIVE_POLL_MS : false,
   });
 }
 

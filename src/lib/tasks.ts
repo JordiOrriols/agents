@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 export const TASK_STATUSES = ["pending", "running", "completed", "failed"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -29,6 +31,57 @@ export interface TaskMessage {
   role: "user" | "agent";
   body: string;
   createdAt: string;
+}
+
+export interface RunMessage {
+  kind: "agents-run";
+  version: 1;
+  model: string;
+  selection: string;
+  phases: {
+    name: "routing" | "plan" | "work" | "review";
+    tokens: number;
+    seconds: number;
+    tools: string[];
+  }[];
+  answer: string;
+  verification: string;
+  failure: string | null;
+}
+
+export function parseRunMessage(body: string): RunMessage | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(body);
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+  const record = (item: unknown): item is Record<string, unknown> =>
+    typeof item === "object" && item !== null && !Array.isArray(item);
+  if (!record(value) || value["kind"] !== "agents-run") return null;
+  const number = (item: unknown) => typeof item === "number" && Number.isFinite(item) && item >= 0;
+  const valid = (value: Record<string, unknown>): value is Record<string, unknown> & RunMessage =>
+    value["version"] === 1 &&
+    ["model", "selection", "answer", "verification"].every(
+      (field) => typeof value[field] === "string"
+    ) &&
+    (value["failure"] === null || typeof value["failure"] === "string") &&
+    Array.isArray(value["phases"]) &&
+    value["phases"].every(
+      (phase: unknown) =>
+        record(phase) &&
+        ["routing", "plan", "work", "review"].includes(String(phase["name"])) &&
+        number(phase["tokens"]) &&
+        number(phase["seconds"]) &&
+        Array.isArray(phase["tools"]) &&
+        phase["tools"].every(
+          (tool: unknown) =>
+            typeof tool === "string" && /^[a-zA-Z0-9_-]{1,60}: (completed|error)$/.test(tool)
+        )
+    );
+  if (!valid(value)) throw new Error(i18n.t("errors.unexpectedResponse"));
+  return value;
 }
 
 export interface RunnerStatus {

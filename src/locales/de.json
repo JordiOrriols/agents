@@ -100,6 +100,13 @@
       "plan": "Plan",
       "outcome": "Ergebnis",
       "chat": "Chat",
+      "history": "Ausführungsverlauf",
+      "phases": {
+        "routing": "Modellauswahl",
+        "plan": "Planung",
+        "work": "Ausführung",
+        "review": "Ergebnisprüfung"
+      },
       "chatPlaceholder": "Stell eine Rückfrage oder bitte um eine Änderung",
       "chatHint": "Der Agent antwortet bei der nächsten Prüfung in derselben Sitzung.",
       "chatBusy": "Du kannst schreiben, sobald der Agent fertig ist.",
