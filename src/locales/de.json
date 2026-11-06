@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "In der Warteschlange",
-      "running": "Gestartet {{time}}",
       "finished": "{{duration}} · {{tokens}} Tokens"
     },
     "detail": {

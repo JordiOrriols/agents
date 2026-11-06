@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   arrangeTasks,
+  elapsedSeconds,
   formatDuration,
   formatRelative,
   formatTokens,
@@ -108,6 +109,24 @@ describe("formatters", () => {
     expect(formatRelative("2026-11-01T11:55:00Z", "en", now)).toBe("5 minutes ago");
     expect(formatRelative("2026-11-01T09:00:00Z", "en", now)).toBe("3 hours ago");
     expect(formatRelative("2026-10-31T12:00:00Z", "en", now)).toBe("yesterday");
+  });
+});
+
+describe("elapsedSeconds", () => {
+  const now = Date.parse("2026-11-01T12:00:00Z");
+  const task = { secondsSpent: 100, startedAt: "2026-11-01T11:59:00Z" } as AgentTask;
+
+  it("adds the run in progress to the time already spent", () => {
+    expect(elapsedSeconds({ ...task, status: "running" }, now)).toBe(160);
+  });
+
+  it("never goes backwards when the clocks disagree", () => {
+    expect(elapsedSeconds({ ...task, status: "running" }, now - 120_000)).toBe(100);
+  });
+
+  it("uses the recorded time once the task stops running", () => {
+    expect(elapsedSeconds({ ...task, status: "completed" }, now)).toBe(100);
+    expect(elapsedSeconds({ ...task, status: "running", startedAt: null }, now)).toBe(100);
   });
 });
 

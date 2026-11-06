@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useData } from "@/data/DataProvider";
-import type { AgentTask } from "@/lib/tasks";
+import { elapsedSeconds, type AgentTask } from "@/lib/tasks";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
@@ -24,6 +24,19 @@ export function useTasks(workspaceId: string | null) {
         ? ACTIVE_POLL_MS
         : IDLE_POLL_MS,
   });
+}
+
+/** Time spent on a task, counting up every second while it runs. */
+export function useElapsedSeconds(task: AgentTask) {
+  const [now, setNow] = useState(() => Date.now());
+  const running = task.status === "running";
+  useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [running]);
+  return elapsedSeconds(task, now);
 }
 
 export function useTaskMessages(task: AgentTask | null) {

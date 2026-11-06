@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "En file",
-      "running": "Commencée {{time}}",
       "finished": "{{duration}} · {{tokens}} tokens"
     },
     "detail": {

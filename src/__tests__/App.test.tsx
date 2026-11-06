@@ -214,7 +214,7 @@ describe("Agents", () => {
     renderAt("/");
     const queue = await screen.findByRole("region", { name: "Up next" });
     expect(cardTitles(queue)).toEqual([
-      "Running nowStarted 2 minutes ago",
+      expect.stringMatching(/^Running now2m \d\ds$/),
       "FirstQueued1",
       "SecondQueued2",
     ]);
@@ -295,7 +295,11 @@ describe("Agents", () => {
     expect(within(detail).getByTestId("task-instructions")).toHaveTextContent(
       "The login fails on Safari."
     );
-    expect(within(detail).getByTestId("task-plan")).toHaveTextContent("1. Reproduce 2. Fix");
+    expect(
+      within(within(detail).getByTestId("task-plan"))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(["Reproduce", "Fix"]);
     expect(within(detail).getByTestId("task-outcome")).toHaveTextContent("Fixed the cookie flag.");
     expect(within(detail).getByText("1h 02m")).toBeInTheDocument();
     expect(within(detail).getByText("12.3K")).toBeInTheDocument();
@@ -369,6 +373,42 @@ describe("Agents", () => {
     await userEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("No tasks yet")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders agent reports as Markdown without trusting their HTML", async () => {
+    store.tasks = [
+      store.task("t1", {
+        title: "Report",
+        status: "completed",
+        outcome:
+          "## Result\n\n| Park | Rides |\n|---|---|\n| Ferrari Land | 16 |\n\n" +
+          "[Source](https://example.com)\n\n<img src=x onerror=alert(1)>",
+      }),
+    ];
+    renderAt("/tasks/t1");
+    const outcome = await screen.findByTestId("task-outcome");
+    expect(within(outcome).getByRole("heading", { name: "Result" })).toBeInTheDocument();
+    expect(within(outcome).getByRole("cell", { name: "16" })).toBeInTheDocument();
+    expect(within(outcome).getByRole("link", { name: "Source" })).toHaveAttribute(
+      "href",
+      "https://example.com"
+    );
+    expect(outcome.querySelector("img")).toBeNull();
+  });
+
+  it("counts the time of a running task", async () => {
+    store.tasks = [
+      store.task("t1", {
+        title: "Busy",
+        status: "running",
+        runner: "studio",
+        seconds_spent: 60,
+        started_at: store.minutesAgo(2),
+      }),
+    ];
+    renderAt("/tasks/t1");
+    const detail = await screen.findByRole("dialog", { name: "Busy" });
+    expect(within(detail).getByText(/^3m \d\ds$/)).toBeInTheDocument();
   });
 
   it("does not let a running task be deleted or chatted with", async () => {

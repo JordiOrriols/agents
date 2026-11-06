@@ -113,6 +113,12 @@ export function arrangeTasks(tasks: AgentTask[]) {
   return { queue, done };
 }
 
+/** Time spent on a task, including the run in progress. */
+export function elapsedSeconds(task: AgentTask, now: number) {
+  if (task.status !== "running" || !task.startedAt) return task.secondsSpent;
+  return task.secondsSpent + Math.max(0, (now - Date.parse(task.startedAt)) / 1000);
+}
+
 export function formatDuration(seconds: number) {
   const total = Math.max(0, Math.round(seconds));
   const hours = Math.floor(total / 3600);

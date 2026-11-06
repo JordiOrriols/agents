@@ -74,7 +74,9 @@ for a headless runner or change `web_port` if necessary. The server binds only t
    Unrelated results, unverifiable claims, malformed verdicts and exhausted budgets fail rather
    than being treated as completed. This model review checks relevance, not independent factual
    truth: a model can still make mistakes.
-6. Reports the time, tokens and result, including routing and review costs. The task also fails
+6. Reports the time, tokens and result, including routing and review costs. The result is a
+   Markdown report, rendered in the task, with the answer, its evidence and what is unverified.
+   A compaction that follows the final answer does not replace it. The task also fails
    when OpenCode exits with an error, gives no answer, or reaches `max_tokens` or `max_minutes`.
 
 The task conversation saves a bounded **Run history** after each attempt: selected model and

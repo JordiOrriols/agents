@@ -84,7 +84,6 @@
     },
     "meta": {
       "queued": "A la cua",
-      "running": "Va començar {{time}}",
       "finished": "{{duration}} · {{tokens}} tokens"
     },
     "detail": {
