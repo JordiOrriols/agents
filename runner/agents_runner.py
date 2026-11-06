@@ -47,7 +47,7 @@ class Config:
     model: str = "ollama/qwen3-coder:30b"
     context: int = 32768
     output: int = 8192
-    max_tokens: int = 150_000
+    max_tokens: int = 500_000
     max_minutes: float = 30
     poll_minutes: float = 5
     plan_first: bool = True

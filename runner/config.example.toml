@@ -28,7 +28,7 @@ context = 32768
 output = 8192
 
 # Limits for one run of one task. The agent is stopped when either is reached and the task fails.
-max_tokens = 150000
+max_tokens = 500000
 max_minutes = 30
 
 # How often to check for new tasks when there is nothing to do.

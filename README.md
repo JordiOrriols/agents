@@ -97,7 +97,7 @@ the time and tokens keep adding up across runs.
 | `ollama_url`   | `http://localhost:11434` | Local Ollama endpoint for model discovery            |
 | `context`      | `32768`                  | Context window given to OpenCode (e.g. 65536)        |
 | `output`       | `8192`                   | Largest answer in tokens                             |
-| `max_tokens`   | `150000`                 | Input + output tokens per run                        |
+| `max_tokens`   | `500000`                 | Input + output tokens per run                        |
 | `max_minutes`  | `30`                     | Time per run                                         |
 | `poll_minutes` | `5`                      | Wait between checks when the list is empty           |
 | `plan_first`   | `true`                   | Plan with the read-only agent before working         |
@@ -107,6 +107,10 @@ the time and tokens keep adding up across runs.
 
 Make sure Ollama serves the model with at least the same context, for example
 `OLLAMA_CONTEXT_LENGTH=32768 ollama serve`.
+
+The 500,000-token budget counts input again on every model step, not just generated text.
+Together with the 30-minute limit it is a safety ceiling, not a target duration.
+Restart the runner after changing its configuration; settings are loaded at startup.
 
 ### Keep it running on macOS
 

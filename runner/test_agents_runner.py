@@ -110,7 +110,7 @@ class ConfigTest(RunnerTestCase):
         self.assertEqual(config.max_minutes, 10.0)
         self.assertFalse(config.plan_first)
         self.assertEqual(config.workspace_id, "w1")
-        self.assertEqual(config.max_tokens, 150_000)
+        self.assertEqual(config.max_tokens, 500_000)
         self.assertEqual(config.poll_minutes, 5)
 
     def test_falls_back_to_the_web_app_env_file(self):
