@@ -5,8 +5,38 @@ import {
   formatRelative,
   formatTokens,
   isRunnerOnline,
+  parseRunMessage,
   type AgentTask,
 } from "../tasks";
+
+describe("parseRunMessage", () => {
+  const run = {
+    kind: "agents-run",
+    version: 1,
+    model: "ollama/qwen3.6:35b",
+    selection: "Research task",
+    phases: [{ name: "work", seconds: 2, tokens: 80, tools: ["webfetch: completed"] }],
+    answer: "Could not verify live availability.",
+    verification: "No verified current source",
+    failure: "Objective not achieved",
+  };
+  it("preserves legacy chat and parses structured run summaries", () => {
+    expect(parseRunMessage("A normal reply")).toBeNull();
+    expect(parseRunMessage('{"unrelated":true}')).toBeNull();
+    expect(parseRunMessage(JSON.stringify(run))).toEqual(run);
+  });
+  it("rejects malformed structured histories", () => {
+    for (const overrides of [
+      { version: 2 },
+      { answer: 1 },
+      { failure: false },
+      { phases: [{ name: "unknown", seconds: 0, tokens: 0, tools: [] }] },
+      { phases: [{ name: "work", seconds: -1, tokens: 0, tools: [] }] },
+      { phases: [{ name: "work", seconds: 1, tokens: 0, tools: ["private tool output"] }] },
+    ])
+      expect(() => parseRunMessage(JSON.stringify({ ...run, ...overrides }))).toThrow();
+  });
+});
 
 const task = (id: string, overrides: Partial<AgentTask>): AgentTask => ({
   id,

@@ -332,6 +332,34 @@ describe("Agents", () => {
     expect(rpc).toHaveBeenCalledWith("agents_rerun_task", { task: "t1" });
   });
 
+  it("shows bounded run history in the agent conversation", async () => {
+    store.tasks = [store.task("t1", { status: "failed", title: "Check attractions" })];
+    store.messages = [
+      {
+        id: "history-1",
+        task_id: "t1",
+        role: "agent",
+        created_at: store.minutesAgo(1),
+        body: JSON.stringify({
+          kind: "agents-run",
+          version: 1,
+          model: "ollama/qwen3.6:35b",
+          selection: "General research",
+          answer: "Live availability could not be verified.",
+          verification: "A sitemap is not an answer.",
+          failure: "Objective not achieved",
+          phases: [{ name: "work", seconds: 5, tokens: 100, tools: ["webfetch: completed"] }],
+        }),
+      },
+    ];
+    renderAt("/tasks/t1");
+    expect(await screen.findByText("Live availability could not be verified.")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Run history"));
+    expect(screen.getByTestId("agent-run-history")).toHaveTextContent("webfetch");
+    expect(screen.getByText("A sitemap is not an answer.")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("Objective not achieved");
+  });
+
   it("deletes a task after confirming and goes back to the list", async () => {
     store.tasks = [store.task("t1", { title: "Old idea" })];
     renderAt("/tasks/t1");

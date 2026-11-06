@@ -100,6 +100,13 @@
       "plan": "Pla",
       "outcome": "Resultat",
       "chat": "Xat",
+      "history": "Historial d'execució",
+      "phases": {
+        "routing": "Selecció del model",
+        "plan": "Planificació",
+        "work": "Execució",
+        "review": "Revisió del resultat"
+      },
       "chatPlaceholder": "Fes una pregunta o demana un canvi",
       "chatHint": "L'agent respon a la mateixa sessió a la propera comprovació.",
       "chatBusy": "Podràs escriure quan l'agent acabi.",
