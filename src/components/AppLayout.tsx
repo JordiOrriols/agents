@@ -10,6 +10,7 @@ import {
   EmptyState,
   ErrorState,
   WorkspaceBar,
+  WorkspaceSetup,
   getWorkspaceLabels,
   getDisplayName,
 } from "@jordiorriols/ui";
@@ -67,6 +68,7 @@ export default function AppLayout() {
                     await refresh();
                   }}
                   onSharesChanged={refresh}
+                  onDeleted={refresh}
                   labels={getWorkspaceLabels(i18n.language)}
                 />
               )
@@ -87,6 +89,16 @@ export default function AppLayout() {
         <AppSkeleton label={t("app.loading")} />
       ) : workspace ? (
         <Outlet />
+      ) : user && workspaceApi && !error ? (
+        <WorkspaceSetup
+          api={workspaceApi}
+          language={i18n.language}
+          onRefresh={refresh}
+          onCreated={async (created) => {
+            select(created.id);
+            await refresh();
+          }}
+        />
       ) : (
         !error && (
           <EmptyState

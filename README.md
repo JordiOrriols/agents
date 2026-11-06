@@ -12,6 +12,13 @@ model) picks the tasks up one after the other, plans each one, does it, and repo
 It shares sign-in, workspaces, the header and the styling with Ladders, Planner, Pulse and
 Shiplog through [`@jordiorriols/ui`](https://github.com/JordiOrriols/ui).
 
+UI `^0.3.33` provides `WorkspaceSetup` for accounts with no workspace: create one
+explicitly or wait for an invitation, checked automatically. The workspace menu
+offers owner-only confirmed deletion. Backend `delete_workspace` rejects
+content in any of the five apps and discards empty teams/projects. Failures are
+displayed and the directory refreshes only after success. Deploy the backend
+lifecycle migration before enabling these controls.
+
 ## Web app
 
 ```sh
