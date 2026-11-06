@@ -27,11 +27,11 @@ locale and inline-copy tests fail when a key is missing or text is hard-coded.
 
 ## Database
 
-The Supabase project is shared with Ladders, Planner, Pulse and Shiplog.
-`supabase/migrations` holds the whole shared history so `supabase db push` sees
-every remote version. Add new migrations after the latest one, test them in
-`src/data/__tests__/agentsDatabase.test.ts`, and apply them only with the
-user's approval.
+The Supabase project is shared with Ladders, Planner, Pulse and Shiplog. Its
+migrations, configuration and database tests live in the
+[backend](https://github.com/JordiOrriols/backend) repository
+(`tests/agents/tasks.test.ts` covers the Agents tables). Add schema changes
+there, and apply them only with the user's approval.
 
 ## Secrets
 

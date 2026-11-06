@@ -124,12 +124,7 @@ npm run test:runner
 
 ## Database
 
-The Supabase project is shared with the other apps, so `supabase/migrations` holds the whole
-shared history. The Agents tables are `agent_tasks`, `agent_task_messages` and
-`agent_runners`; every change goes through `agents_*` functions that check workspace access.
-
-```sh
-npx supabase link --project-ref <project-ref>
-npx supabase db push --linked --dry-run
-npx supabase db push --linked
-```
+The Supabase project is shared with the other apps. Its migrations and database tests live in
+the [backend](https://github.com/JordiOrriols/backend) repository, which also documents how to
+apply them. The Agents tables are `agent_tasks`, `agent_task_messages` and `agent_runners`;
+every change goes through `agents_*` functions that check workspace access.
